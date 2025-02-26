@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from pymongo import MongoClient
 import multiprocessing
 import dateparser
+import subprocess
 
 load_dotenv()
 #uri = os.getenv('DATABASE_URL')
@@ -235,6 +236,18 @@ def count_domain_loc(uri, domain, country_name, country_code):
         Path(path).mkdir(parents=True, exist_ok=True)
     df.to_csv(path + f'{domain}.csv')
 
+def run_git_commands(commit_message):
+    try:
+        # Add only Python files using shell globbing
+        subprocess.run("git add *.py", shell=True, check=True)
+        # Commit changes with a message
+        subprocess.run(["git", "commit", "-m", commit_message], check=True)
+        # Push changes to the repository
+        subprocess.run(["git", "push"], check=True)
+        print("Git commands executed successfully!")
+    except subprocess.CalledProcessError as e:
+        print(f"An error occurred while running Git commands: {e}")
+
 
 # Then ints
 def count_domain_int(uri, domain, country_name, country_code):
@@ -388,7 +401,9 @@ if __name__ == "__main__":
         ('Burkina Faso', 'BFA'),
         ('Dominican Republic', 'DOM'),
         ('Timor Leste', 'TLS'),
-        ('Solomon Islands', 'SLB')
+        ('Solomon Islands', 'SLB'),
+        ("Costa Rica",'CRI'),
+        ('Panama','PAN')
     ]
     
 
@@ -464,6 +479,11 @@ if __name__ == "__main__":
                 ind = 0
             except:
                 pass
+        
+         # Git operations
+        countries_added = '/'.join(countries_needed)
+        commit_message = f"econ crisis count ({countries_added}) update"
+        run_git_commands(commit_message)
 
 # screen -S screen_count
 # screen -r screen_count

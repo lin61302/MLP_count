@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from pymongo import MongoClient
 import multiprocessing
 import dateparser
+import subprocess
 
 today = pd.Timestamp.now()
 load_dotenv()
@@ -282,6 +283,18 @@ def count_domain_int(uri, domain, country_name, country_code):
     Path(path).mkdir(parents=True, exist_ok=True)
     df.to_csv(os.path.join(path, f'{domain}.csv'))
 
+def run_git_commands(commit_message):
+    try:
+        # Add only Python files using shell globbing
+        subprocess.run("git add *.py", shell=True, check=True)
+        # Commit changes with a message
+        subprocess.run(["git", "commit", "-m", commit_message], check=True)
+        # Push changes to the repository
+        subprocess.run(["git", "push"], check=True)
+        print("Git commands executed successfully!")
+    except subprocess.CalledProcessError as e:
+        print(f"An error occurred while running Git commands: {e}")
+
 if __name__ == "__main__":
     slp = False
     if slp:
@@ -353,11 +366,12 @@ if __name__ == "__main__":
         ('Dominican Republic', 'DOM'),
         ('Timor Leste', 'TLS'),
         ('Solomon Islands', 'SLB'),
-        ("Costa Rica",'CRI')
+        ("Costa Rica",'CRI'),
+        ('Panama','PAN')
     ]
     
 
-    countries_needed = ['MRT','GHA']
+    countries_needed = ['PAN']
 
     countries = [(name, code) for (name, code) in all_countries if code in countries_needed]
 
@@ -402,3 +416,8 @@ if __name__ == "__main__":
                 ind = 0
             except:
                 pass
+
+        # Git operations
+        countries_added = '/'.join(countries_needed)
+        commit_message = f"RAI Russia count ({countries_added}) update"
+        run_git_commands(commit_message)
