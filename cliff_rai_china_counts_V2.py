@@ -419,4 +419,4 @@ if __name__ == "__main__":
         # Git operations
         countries_added = '/'.join(countries_needed)
         commit_message = f"RAI China count ({countries_added}) update"
-        run_git_commands(commit_message)
+        # run_git_commands(commit_message)
