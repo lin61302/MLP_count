@@ -98,6 +98,7 @@ def count_domain_loc_env(uri, domain, country_name, country_code):
             {
                 'source_domain': domain,
                 'include': True,
+                'environmental_binary.result': 'Yes',
                 # We want env_classifier to exist
                 'env_classifier': {'$exists': True},
                 'language': {'$ne': 'en'},
@@ -117,6 +118,7 @@ def count_domain_loc_env(uri, domain, country_name, country_code):
             {
                 'source_domain': domain,
                 'include': True,
+                'environmental_binary.result': 'Yes',
                 'env_classifier': {'$exists': True},
                 'language': 'en',
                 # '$or': [
@@ -221,6 +223,7 @@ def count_domain_int_env(uri, domain, country_name, country_code):
             {
                 'source_domain': domain,
                 'include': True,
+                'environmental_binary.result': 'Yes',
                 'env_classifier': {'$exists': True},
                 'language': {'$ne': 'en'},
                 # f'cliff_locations.{country_code}': {'$exists': True}
@@ -235,6 +238,7 @@ def count_domain_int_env(uri, domain, country_name, country_code):
             {
                 'source_domain': domain,
                 'include': True,
+                'environmental_binary.result': 'Yes',
                 'env_classifier': {'$exists': True},
                 'language': 'en',
                 # f'en_cliff_locations.{country_code}': {'$exists': True}
@@ -370,12 +374,14 @@ if __name__ == "__main__":
         ("Costa Rica",'CRI'),
         ('Panama','PAN'),
         ('Environmental International','ENV_INT'),
+        ('Environmental Regional','ENV_REG'),
         ('Environmental Nicaragua','ENV_NIC'),
         ('Environmental Solomon Islands','ENV_SLB'),
         ('Environmental Nigeria','ENV_NGA'),
         ('Environmental El Salvador','ENV_SLV'),
         ('Environmental Guatemala','ENV_GTA'),
-        ('Environmental Panama','ENV_PAN')
+        ('Environmental Panama','ENV_PAN'),
+        ('Environmental Costa Rica','ENV_CRI')
     ]
     countries = [(name, code) for (name, code) in all_countries if code in countries_needed]
 
