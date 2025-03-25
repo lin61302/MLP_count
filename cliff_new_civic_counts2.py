@@ -752,10 +752,11 @@ if __name__ == "__main__":
         ('Solomon Islands', 'SLB'),
         ("Costa Rica",'CRI'),
         ('Panama','PAN')
+        
     ]
     
 
-    countries_needed = ['PAN']
+    countries_needed = ['SLV','NIC','GTM','HND','SLB','NGA']
 
     countries = [(name, code) for (name, code) in all_countries if code in countries_needed]
 

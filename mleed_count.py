@@ -210,7 +210,7 @@ def count_domain_int_env(uri, domain, country_name, country_code):
         df[label] = 0
 
     projection_int = {
-        '_id': 1, 'env_classifier': 1, 'date_publish': 1,
+        '_id': 1, 'env_binary': 1, 'env_classifier': 1, 'date_publish': 1,
         'title_translated': 1, 'maintext_translated': 1,
         # 'cliff_locations': 1, 'en_cliff_locations': 1
     }
