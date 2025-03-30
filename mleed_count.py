@@ -306,7 +306,7 @@ def run_git_commands(commit_message):
 if __name__ == "__main__":
 
     # Example: just for 'Panama' (PAN)
-    countries_needed = ['ENV_INT','ENV_NIC','ENV_SLB','ENV_NGA','ENV_SLV','ENV_GTA','ENV_PAN']
+    countries_needed = ['ENV_BLR','ENV_BFA','ENV_ALB','ENV_AGO','ENV_NGA','ENV_SLV','ENV_BEN','ENV_PAK','ENV_HND']
     all_countries = [
         ('Albania', 'ALB'), 
         ('Benin', 'BEN'),
@@ -374,15 +374,24 @@ if __name__ == "__main__":
         ("Costa Rica",'CRI'),
         ('Panama','PAN'),
         ('Environmental International','ENV_INT'),
-        ('Environmental Regional','ENV_REG'),
         ('Environmental Nicaragua','ENV_NIC'),
         ('Environmental Solomon Islands','ENV_SLB'),
         ('Environmental Nigeria','ENV_NGA'),
         ('Environmental El Salvador','ENV_SLV'),
         ('Environmental Guatemala','ENV_GTA'),
         ('Environmental Panama','ENV_PAN'),
-        ('Environmental Costa Rica','ENV_CRI')
+        ('Environmental Costa Rica','ENV_CRI'),
+        ('Environmental Belarus','ENV_BLR'),
+        ('Environmental Burkina Faso','ENV_BFA'),
+        ('Environmental Albania','ENV_ALB'),
+        ('Environmental Angola','ENV_AGO'),
+        ('Environmental Nigeria','ENV_NGA'),
+        ('Environmental El Salvado','ENV_SLV'),
+        ('Environmental Benin','ENV_BEN'),
+        ('Environmental Pakistan','ENV_PAK'),
+        ('Environmental Honduras','ENV_HND'),
     ]
+
     countries = [(name, code) for (name, code) in all_countries if code in countries_needed]
 
     for (country_name, country_code) in countries:
