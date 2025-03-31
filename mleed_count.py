@@ -414,11 +414,11 @@ if __name__ == "__main__":
             {'primary_location': {'$in':['ENV_INT']}, 'include': True}
         )]
 
-        # # For local sources
-        # p_umap(count_domain_loc_env, [uri]*len(loc), loc, [country_name]*len(loc), [country_code]*len(loc), num_cpus=10)
+        # For local sources
+        p_umap(count_domain_loc_env, [uri]*len(loc), loc, [country_name]*len(loc), [country_code]*len(loc), num_cpus=10)
 
-        # # For international and regionals sources
-        # p_umap(count_domain_int_env, [uri]*len(mlp_int), ints, [country_name]*len(mlp_int), [country_code]*len(mlp_int), num_cpus=10)
+        # For international and regionals sources
+        p_umap(count_domain_int_env, [uri]*len(mlp_int), ints, [country_name]*len(mlp_int), [country_code]*len(mlp_int), num_cpus=10)
 
         # For environmental international and regionals sources
         p_umap(count_domain_int_env, [uri]*len(env_ints), env_ints, [country_name]*len(env_ints), [country_code]*len(env_ints), num_cpus=10)
