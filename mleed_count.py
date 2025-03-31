@@ -79,6 +79,8 @@ def count_domain_loc_env(uri, domain, country_name, country_code):
     df['year'] = df.index.year
     df['month'] = df.index.month
 
+    loc_code = country_code[-3:]
+
     # Add columns for each environment label + total_articles
     for label in env_labels:
         df[label] = 0
@@ -87,7 +89,7 @@ def count_domain_loc_env(uri, domain, country_name, country_code):
     projection_loc = {
         '_id': 1, 'env_classifier': 1, 'date_publish': 1,
         'title_translated': 1, 'maintext_translated': 1,
-        # 'cliff_locations': 1, 'en_cliff_locations': 1
+        'cliff_locations': 1, 'en_cliff_locations': 1
     }
 
     for date in df.index:
@@ -103,10 +105,10 @@ def count_domain_loc_env(uri, domain, country_name, country_code):
                 'env_classifier': {'$exists': True},
                 'language': {'$ne': 'en'},
                 # location-based filter
-                # '$or': [
-                #     {f'cliff_locations.{country_code}': {'$exists': True}},
-                #     {'cliff_locations': {}}
-                # ]
+                '$or': [
+                    {f'cliff_locations.{loc_code}': {'$exists': True}},
+                    {'cliff_locations': {}}
+                ]
             },
             projection=projection_loc,
             batch_size=100
@@ -121,10 +123,10 @@ def count_domain_loc_env(uri, domain, country_name, country_code):
                 'environmental_binary.result': 'Yes',
                 'env_classifier': {'$exists': True},
                 'language': 'en',
-                # '$or': [
-                #     {f'en_cliff_locations.{country_code}': {'$exists': True}},
-                #     {'en_cliff_locations': {}}
-                # ]
+                '$or': [
+                    {f'en_cliff_locations.{loc_code}': {'$exists': True}},
+                    {'en_cliff_locations': {}}
+                ]
             },
             projection=projection_loc,
             batch_size=100
@@ -201,10 +203,12 @@ def count_domain_int_env(uri, domain, country_name, country_code):
     db_local = MongoClient(uri).ml4p
 
     df = pd.DataFrame()
-    df['date'] = pd.date_range('2012-1-1', today + pd.Timedelta(31, 'd'), freq='M')
+    df['date'] = pd.date_range('2012-1-1', today + pd.Timedelta(31, 'd'), freq='MS')
     df.index = df['date']
     df['year'] = df.index.year
     df['month'] = df.index.month
+
+    loc_code = country_code[-3:]
 
     for label in env_labels:
         df[label] = 0
@@ -212,7 +216,7 @@ def count_domain_int_env(uri, domain, country_name, country_code):
     projection_int = {
         '_id': 1, 'env_binary': 1, 'env_classifier': 1, 'date_publish': 1,
         'title_translated': 1, 'maintext_translated': 1,
-        # 'cliff_locations': 1, 'en_cliff_locations': 1
+        'cliff_locations': 1, 'en_cliff_locations': 1
     }
 
     for date in df.index:
@@ -226,7 +230,7 @@ def count_domain_int_env(uri, domain, country_name, country_code):
                 'environmental_binary.result': 'Yes',
                 'env_classifier': {'$exists': True},
                 'language': {'$ne': 'en'},
-                # f'cliff_locations.{country_code}': {'$exists': True}
+                f'cliff_locations.{loc_code}': {'$exists': True}
             },
             projection=projection_int,
             batch_size=100
@@ -241,7 +245,7 @@ def count_domain_int_env(uri, domain, country_name, country_code):
                 'environmental_binary.result': 'Yes',
                 'env_classifier': {'$exists': True},
                 'language': 'en',
-                # f'en_cliff_locations.{country_code}': {'$exists': True}
+                f'en_cliff_locations.{loc_code}': {'$exists': True}
             },
             projection=projection_int,
             batch_size=100
@@ -306,7 +310,7 @@ def run_git_commands(commit_message):
 if __name__ == "__main__":
 
     # Example: just for 'Panama' (PAN)
-    countries_needed = ['ENV_BLR','ENV_BFA','ENV_ALB','ENV_AGO','ENV_NGA','ENV_SLV','ENV_BEN','ENV_PAK','ENV_HND']
+    countries_needed = ['CRI','ENV_CRI','ENV_GTM','GTM','ENV_HND','HND']
     all_countries = [
         ('Albania', 'ALB'), 
         ('Benin', 'BEN'),
@@ -404,15 +408,20 @@ if __name__ == "__main__":
         )]
         ints = [doc['source_domain'] for doc in db_mongo['sources'].find({'major_international': True, 'include': True})]
         regionals = [doc['source_domain'] for doc in db_mongo['sources'].find({'major_regional': True, 'include': True})]
+        mlp_int = ints + regionals
 
-        # For local sources
-        p_umap(count_domain_loc_env, [uri]*len(loc), loc, [country_name]*len(loc), [country_code]*len(loc), num_cpus=10)
+        env_ints = [doc['source_domain'] for doc in db_mongo['sources'].find(
+            {'primary_location': {'$in':['ENV_INT']}, 'include': True}
+        )]
 
-        # # For international sources
-        # p_umap(count_domain_int_env, [uri]*len(ints), ints, [country_name]*len(ints), [country_code]*len(ints), num_cpus=10)
+        # # For local sources
+        # p_umap(count_domain_loc_env, [uri]*len(loc), loc, [country_name]*len(loc), [country_code]*len(loc), num_cpus=10)
 
-        # # For regionals
-        # p_umap(count_domain_int_env, [uri]*len(regionals), regionals, [country_name]*len(regionals), [country_code]*len(regionals), num_cpus=10)
+        # # For international and regionals sources
+        # p_umap(count_domain_int_env, [uri]*len(mlp_int), ints, [country_name]*len(mlp_int), [country_code]*len(mlp_int), num_cpus=10)
+
+        # For environmental international and regionals sources
+        p_umap(count_domain_int_env, [uri]*len(env_ints), env_ints, [country_name]*len(env_ints), [country_code]*len(env_ints), num_cpus=10)
 
         commit_message = f"env classifier count ({country_code}) update"
         run_git_commands(commit_message)
