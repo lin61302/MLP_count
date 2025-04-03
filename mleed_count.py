@@ -310,7 +310,7 @@ def run_git_commands(commit_message):
 if __name__ == "__main__":
 
     # Example: just for 'Panama' (PAN)
-    countries_needed = ['SLB','ENV_SLB']
+    countries_needed = ['GTM','ENV_GTM']
     all_countries = [
         ('Albania', 'ALB'), 
         ('Benin', 'BEN'),
