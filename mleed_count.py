@@ -310,7 +310,7 @@ def run_git_commands(commit_message):
 if __name__ == "__main__":
 
     # Example: just for 'Panama' (PAN)
-    countries_needed = ['ENV_GTM', 'AGO', 'ENV_AGO']
+    countries_needed = ['PAN','CRI', 'CMR','TUN','LKA','UGA','NPL']
     all_countries = [
         ('Albania', 'ALB'), 
         ('Benin', 'BEN'),
@@ -390,7 +390,7 @@ if __name__ == "__main__":
         ('Environmental Albania','ENV_ALB'),
         ('Environmental Angola','ENV_AGO'),
         ('Environmental Nigeria','ENV_NGA'),
-        ('Environmental El Salvado','ENV_SLV'),
+        ('Environmental El Salvador','ENV_SLV'),
         ('Environmental Benin','ENV_BEN'),
         ('Environmental Pakistan','ENV_PAK'),
         ('Environmental Honduras','ENV_HND'),
@@ -417,11 +417,14 @@ if __name__ == "__main__":
         # For local sources
         p_umap(count_domain_loc_env, [uri]*len(loc), loc, [country_name]*len(loc), [country_code]*len(loc), num_cpus=10)
 
+
         # For international and regionals sources
-        p_umap(count_domain_int_env, [uri]*len(mlp_int), ints, [country_name]*len(mlp_int), [country_code]*len(mlp_int), num_cpus=10)
+        if 'ENV_' not in country_code:
+            p_umap(count_domain_int_env, [uri]*len(mlp_int), ints, [country_name]*len(mlp_int), [country_code]*len(mlp_int), num_cpus=10)
 
         # For environmental international and regionals sources
-        p_umap(count_domain_int_env, [uri]*len(env_ints), env_ints, [country_name]*len(env_ints), [country_code]*len(env_ints), num_cpus=10)
+        if 'ENV_' in country_code:
+            p_umap(count_domain_int_env, [uri]*len(env_ints), env_ints, [country_name]*len(env_ints), [country_code]*len(env_ints), num_cpus=10)
 
         commit_message = f"env classifier count ({country_code}) update"
         run_git_commands(commit_message)
