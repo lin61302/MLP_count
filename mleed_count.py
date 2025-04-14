@@ -308,9 +308,14 @@ def run_git_commands(commit_message):
         print(f"An error occurred while running Git commands: {e}")
 
 if __name__ == "__main__":
+    slp = True
+    if slp:
+        t = 7200
+        print(f'start sleeping for {t/60} mins')
+        time.sleep(t)
 
     # Example: just for 'Panama' (PAN)
-    countries_needed = ['MAR','SSD','TZA','RWA','ZWE','COD','NER', 'TLS', 'GEO', 'PRY', 'ECU', 'MLI', 'JAM', 'KAZ' ,'ARM','MOZ']
+    countries_needed = ['ARM', 'ENV_AGO', 'ENV_AZE', 'ENV_BLR', 'ENV_CMR', 'ENV_BGD', 'ENV_DZA', 'ENV_COL', 'ENV_DOM', 'ENV_UZB', 'ENV_KAZ', 'ENV_KGZ']
     # 'PAN','CRI', 'CMR','TUN','LKA','UGA','NPL'
     all_countries = [
         ('Albania', 'ALB'), 
@@ -395,6 +400,15 @@ if __name__ == "__main__":
         ('Environmental Benin','ENV_BEN'),
         ('Environmental Pakistan','ENV_PAK'),
         ('Environmental Honduras','ENV_HND'),
+        ('Environmental Azerbaijan','ENV_AZE'),
+        ('Environmental Cameroon','ENV_CMR'),
+        ('Environmental Bangladesh','ENV_BGD'),
+        ('Environmental Algeria','ENV_DZA'),
+        ('Environmental Colombia','ENV_COL'),
+        ('Environmental Dominican Republic','ENV_DOM'),
+        ('Environmental Uzbekistan','ENV_UZB'),
+        ('Environmental Kazakhstan','ENV_KAZ'),
+        ('Environmental Kyrgyzstan','ENV_KGZ'),
     ]
 
     countries = [(name, code) for (name, code) in all_countries if code in countries_needed]
