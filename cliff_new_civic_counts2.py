@@ -756,7 +756,7 @@ if __name__ == "__main__":
     ]
     
 
-    countries_needed = ['GEO','TLS','MOZ','MLI','KAZ','ARM']
+    countries_needed = ['MAR','SSD','TZA','RWA','ZWE','COD','NER', 'TLS', 'GEO', 'PRY', 'ECU', 'MLI', 'JAM', 'KAZ' ,'ARM','MOZ']
 
     countries = [(name, code) for (name, code) in all_countries if code in countries_needed]
 

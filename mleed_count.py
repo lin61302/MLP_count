@@ -310,7 +310,8 @@ def run_git_commands(commit_message):
 if __name__ == "__main__":
 
     # Example: just for 'Panama' (PAN)
-    countries_needed = ['PAN','CRI', 'CMR','TUN','LKA','UGA','NPL']
+    countries_needed = ['MAR','SSD','TZA','RWA','ZWE','COD','NER', 'TLS', 'GEO', 'PRY', 'ECU', 'MLI', 'JAM', 'KAZ' ,'ARM','MOZ']
+    # 'PAN','CRI', 'CMR','TUN','LKA','UGA','NPL'
     all_countries = [
         ('Albania', 'ALB'), 
         ('Benin', 'BEN'),
