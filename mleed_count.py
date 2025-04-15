@@ -308,7 +308,7 @@ def run_git_commands(commit_message):
         print(f"An error occurred while running Git commands: {e}")
 
 if __name__ == "__main__":
-    slp = True
+    slp = False
     if slp:
         t = 7200
         print(f'start sleeping for {t/60} mins')
