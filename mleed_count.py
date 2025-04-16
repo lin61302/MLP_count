@@ -315,7 +315,7 @@ if __name__ == "__main__":
         time.sleep(t)
 
     # Example: just for 'Panama' (PAN)
-    countries_needed = ['ARM', 'ENV_AGO', 'ENV_AZE', 'ENV_BLR', 'ENV_CMR', 'ENV_BGD', 'ENV_DZA', 'ENV_COL', 'ENV_DOM', 'ENV_UZB', 'ENV_KAZ', 'ENV_KGZ']
+    countries_needed = ['ETH','MRT','GHA','ALB', 'BEN', 'PAK']
     # 'PAN','CRI', 'CMR','TUN','LKA','UGA','NPL'
     all_countries = [
         ('Albania', 'ALB'), 
