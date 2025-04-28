@@ -138,7 +138,7 @@ def count_domain_loc_env(uri, domain, country_name, country_code):
             continue
 
         # If country_code == 'GEO', we do Georgia text filtering
-        if country_code == 'GEO':
+        if country_code == 'GEO' or country_code == 'ENV_GEO':
             filtered_docs = []
             for d in docs:
                 # Combine text from title + main, or do them separately
@@ -180,7 +180,7 @@ def count_domain_loc_env(uri, domain, country_name, country_code):
 
             # If country_code == 'GEO', optionally mark a DB field
             # (like your original approach with "Country_Georgia")
-            if country_code == 'GEO':
+            if country_code == 'GEO' or country_code == 'ENV_GEO':
                 colname_g = f"articles-{doc_date.year}-{doc_date.month}"
                 # Mark in DB if you want. We replicate your pattern:
                 db_local[colname_g].update_one(
@@ -257,7 +257,7 @@ def count_domain_int_env(uri, domain, country_name, country_code):
             continue
 
         # If GEO, filter text using the "int" pattern
-        if country_code == 'GEO':
+        if country_code == 'GEO' or country_code == 'ENV_GEO':
             filtered_docs = []
             for d in docs:
                 title_t = d.get('title_translated','')
@@ -287,7 +287,7 @@ def count_domain_int_env(uri, domain, country_name, country_code):
 
             df.loc[doc_date, 'total_articles'] += 1
 
-            if country_code == 'GEO':
+            if country_code == 'GEO' or country_code == 'ENV_GEO':
                 colname_g = f"articles-{doc_date.year}-{doc_date.month}"
                 db_local[colname_g].update_one(
                     {'_id': d['_id']},
@@ -315,7 +315,7 @@ if __name__ == "__main__":
         time.sleep(t)
 
     # Example: just for 'Panama' (PAN)
-    countries_needed = ['ENV_BLR','ENV_BGD', 'ENV_DZA', 'ENV_COL', 'ENV_GHA', 'ENV_GEO', 'ENV_HUN', 'ENV_JAM', 'ENV_SLV']
+    countries_needed = ['PHL','BFA','AGO','AZE','MWI','BLR','BGD','HUN','XKX','MYS','MOZ', 'ARM','IDN','PAN','MKD','KGZ','MDA','SEN','SRB','LBR','NAM','ENV_CMR','ENV_UZB','ENV_KHM','ENV_LBR','ENV_BLR','ENV_GHA', 'ENV_GEO', 'ENV_HUN', 'ENV_JAM']
     # 'PAN','CRI', 'CMR','TUN','LKA','UGA','NPL'
     all_countries = [
         ('Albania', 'ALB'), 
@@ -409,7 +409,16 @@ if __name__ == "__main__":
         ('Environmental Uzbekistan','ENV_UZB'),
         ('Environmental Kazakhstan','ENV_KAZ'),
         ('Environmental Kyrgyzstan','ENV_KGZ'),
+        ('Environmental Liberia', 'ENV_LBR'),
+        ('Environmental Cambodia', 'ENV_KHM'),
+        ('Environmental Belarus', 'ENV_BLR'),
+        ('Environmental Ghana', 'ENV_GHA'),
+        ('Environmental Georgia', 'ENV_GEO'),
+        ('Environmental Hungary', 'ENV_HUN'),
+        ('Environmental Jamaica', 'ENV_JAM'),
+        
     ]
+    # 'ENV_BLR','ENV_BGD', 'ENV_DZA', 'ENV_COL', 'ENV_GHA', 'ENV_GEO', 'ENV_HUN', 'ENV_JAM', 'ENV_SLV'
 
     countries = [(name, code) for (name, code) in all_countries if code in countries_needed]
 
