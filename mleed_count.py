@@ -315,7 +315,8 @@ if __name__ == "__main__":
         time.sleep(t)
 
     # Example: just for 'Panama' (PAN)
-    countries_needed = ['PHL','BFA','AGO','AZE','MWI','BLR','BGD','HUN','XKX','MYS','MOZ', 'ARM','IDN','PAN','MKD','KGZ','MDA','SEN','SRB','LBR','NAM','ENV_CMR','ENV_UZB','ENV_KHM','ENV_LBR','ENV_BLR','ENV_GHA', 'ENV_GEO', 'ENV_HUN', 'ENV_JAM']
+    countries_needed = ['ENV_AZE','ENV_KGZ','ENV_IDN','ENV_MDA','ENV_MKD','ENV_COD','ENV_KAZ','ENV_LKA','ENV_ECU','ENV_GTM']
+    # 'PHL','BFA','AGO','AZE','MWI','BLR','BGD','HUN','XKX','MYS','MOZ', 'ARM','IDN','PAN','MKD','KGZ','MDA','SEN','SRB','LBR','NAM','ENV_CMR','ENV_UZB','ENV_KHM','ENV_LBR','ENV_BLR','ENV_GHA', 'ENV_GEO', 'ENV_HUN', 'ENV_JAM'
     # 'PAN','CRI', 'CMR','TUN','LKA','UGA','NPL'
     all_countries = [
         ('Albania', 'ALB'), 
@@ -416,6 +417,12 @@ if __name__ == "__main__":
         ('Environmental Georgia', 'ENV_GEO'),
         ('Environmental Hungary', 'ENV_HUN'),
         ('Environmental Jamaica', 'ENV_JAM'),
+        ('Environmental Indonesia', 'ENV_IDN'),
+        ('Environmental Moldova', 'ENV_MDA'),
+        ('Environmental Macedonia', 'ENV_MKD'),
+        ('Environmental DR Congo', 'ENV_COD'),
+        ('Environmental Sri Lanka', 'ENV_LKA'),
+        ('Environmental Ecuador', 'ENV_ECU'),
         
     ]
     # 'ENV_BLR','ENV_BGD', 'ENV_DZA', 'ENV_COL', 'ENV_GHA', 'ENV_GEO', 'ENV_HUN', 'ENV_JAM', 'ENV_SLV'
