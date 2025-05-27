@@ -315,7 +315,7 @@ if __name__ == "__main__":
         time.sleep(t)
 
     # Example: just for 'Panama' (PAN)
-    countries_needed = ['UKR','DOM','ZMB','KEN',]
+    countries_needed = ['ENV_DZA','ENV_BLR','ENV_SRB','ENV_TUR','ENV_KEN','ENV_LKA','ENV_MAR','ENV_NAM','ENV_PER','ENV_PHL','ENV_RWA','ENV_UKR']
     # 'PHL','BFA','AGO','AZE','MWI','BLR','BGD','HUN','XKX','MYS','MOZ', 'ARM','IDN','PAN','MKD','KGZ','MDA','SEN','SRB','LBR','NAM','ENV_CMR','ENV_UZB','ENV_KHM','ENV_LBR','ENV_BLR','ENV_GHA', 'ENV_GEO', 'ENV_HUN', 'ENV_JAM'
     # 'PAN','CRI', 'CMR','TUN','LKA','UGA','NPL'
     all_countries = [
@@ -432,6 +432,18 @@ if __name__ == "__main__":
         ('Environmental Ethiopia', 'ENV_ETH'),
         ('Environmental Mali', 'ENV_MLI'),
         ('Environmental Nepal', 'ENV_NPL'),
+        ('Environmental Philippines', 'ENV_PHL'),
+        ('Environmental Morocco', 'ENV_MAR'),
+        ('Environmental Serbia', 'ENV_SRB'),
+        ('Environmental Turkey', 'ENV_TUR'),
+        ('Environmental Kenya', 'ENV_KEN'),
+        ('Environmental Namibia', 'ENV_NAM'),
+        ('Environmental Peru', 'ENV_PER'),
+        ('Environmental Rwanda', 'ENV_RWA'),
+        ('Environmental Ukraine', 'ENV_UKR'),
+
+
+
     ]
     # 'ENV_BLR','ENV_BGD', 'ENV_DZA', 'ENV_COL', 'ENV_GHA', 'ENV_GEO', 'ENV_HUN', 'ENV_JAM', 'ENV_SLV'
 
