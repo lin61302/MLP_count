@@ -316,7 +316,7 @@ if __name__ == "__main__":
 
     # Example: just for 'Panama' (PAN)
     countries_needed = ['IND','KGZ','KHM','ZAF', 'DZA',
-                        ]
+                        'ENV_KGZ','ENV_MRT','ENV_UZB','ENV_IDN', 'ENV_TUN','ENV_ZAF','ENV_PER','ENV_PRY','ENV_PHL','ENV_RWA','ENV_SEN','ENV_TUR','ENV_XKX','ENV_UKR','ENV_DZA','ENV_ECU','ENV_KEN','ENV_MAR','ENV_MEX','ENV_MYS','ENV_MLI']
     # 'PHL','BFA','AGO','AZE','MWI','BLR','BGD','HUN','XKX','MYS','MOZ', 'ARM','IDN','PAN','MKD','KGZ','MDA','SEN','SRB','LBR','NAM','ENV_CMR','ENV_UZB','ENV_KHM','ENV_LBR','ENV_BLR','ENV_GHA', 'ENV_GEO', 'ENV_HUN', 'ENV_JAM'
     # 'PAN','CRI', 'CMR','TUN','LKA','UGA','NPL'
     all_countries = [
@@ -442,6 +442,12 @@ if __name__ == "__main__":
         ('Environmental Peru', 'ENV_PER'),
         ('Environmental Rwanda', 'ENV_RWA'),
         ('Environmental Ukraine', 'ENV_UKR'),
+        ('Environmental South Africa', 'ENV_ZAF'),
+        ('Environmental Senegal', 'ENV_SEN'),
+        ('Environmental Kosovo', 'ENV_XKX'),
+        ('Environmental Mexico', 'ENV_MEX'),
+        ('Environmental Malaysia', 'ENV_MYS'),
+     
 
 
 
