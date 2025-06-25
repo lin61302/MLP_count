@@ -340,13 +340,13 @@ if __name__ == "__main__":
     countries_needed = [
         
                             # 'COL', 'ECU',  'PRY','JAM','HND', 'SLV', 'NIC','PER', 'DOM','PAN', 'CRI','SLB', 
-                            # 'BGD','NGA','UGA',
-                            #    'ALB', 'BEN', 'ETH', 'GEO', 'KEN', 'MLI', 'MAR',   
+                            'BGD','NGA','UGA',
+                               'ALB', 'BEN', 'ETH', 'GEO', 'KEN', 'MLI', 'MAR',   
                                'SRB', 'SEN', 'TZA', 'UKR', 'ZWE', 'MRT', 'ZMB', 'XKX', 'NER',  
                                 'PHL', 'GHA', 'RWA', 'GTM', 'BLR', 'KHM', 'COD', 'TUR', 
-                            #    'ZAF', 'TUN', 'IDN', 'AGO', 'ARM', 'LKA', 'MYS', 'CMR', 'HUN', 'MWI', 
-                            #    'UZB', 'IND', 'MOZ', 'AZE', 'KGZ', 'MDA', 'KAZ', 'DZA', 'MKD', 'SSD', 
-                            #    'LBR', 'PAK', 'NPL', 'NAM', 'BFA', 'TLS', #'MEX'
+                               'ZAF', 'TUN', 'IDN', 'AGO', 'ARM', 'LKA', 'MYS', 'CMR', 'HUN', 'MWI', 
+                               'UZB', 'IND', 'MOZ', 'AZE', 'KGZ', 'MDA', 'KAZ', 'DZA', 'MKD', 'SSD', 
+                               'LBR', 'PAK', 'NPL', 'NAM', 'BFA', 'TLS', #'MEX'
                                ]
 
     countries = [(name, code) for (name, code) in all_countries if code in countries_needed]
