@@ -368,7 +368,13 @@ if __name__ == "__main__":
     ]
     
 
-    countries_needed = ['ALB', 'BEN', 'ETH', 'GEO', 'KEN', 'MLI', 'MAR', 'SRB', 'SEN', 'TZA', 'UKR', 'ZWE', 'MRT', 'ZMB', 'XKX', 'NER',]
+    countries_needed = [
+        # 'PHL', 'GHA', 'RWA', 'GTM', 'BLR', 'KHM', 'COD', 'TUR', 
+        #                        'ZAF', 'TUN', 'IDN', 'AGO', 'ARM', 'LKA', 'MYS', 'CMR', 'HUN', 'MWI', 
+        #                        'UZB', 'IND', 'MOZ', 'AZE', 'KGZ', 'MDA', 'KAZ', 'DZA', 'MKD', 'SSD', 
+        #                        'LBR', 'PAK', 'NPL', 'NAM', 'BFA', 'TLS', 
+        'MEX','UZB',
+                               ]
     # countries_needed = ['PHL','BFA','AGO','AZE','MWI','BLR','BGD','HUN','XKX','MYS']
 
     countries = [(name, code) for (name, code) in all_countries if code in countries_needed]
