@@ -17,6 +17,7 @@ uri = 'mongodb://zungru:balsas.rial.tanoaks.schmoe.coffing@db-wibbels.sas.upenn.
 db = MongoClient(uri).ml4p
 
 today = pd.Timestamp.now()
+# today = pd.Timestamp('2025-07-22')
 ind_dic = {'Yes':'Civic_related','No':'Non_Civic_Realed'}
 events = [k for k in db.models.find_one({'model_name': 'civic_new'}).get('event_type_nums').keys()] + ['defamationcase']
 
