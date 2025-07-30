@@ -367,7 +367,8 @@ if __name__ == "__main__":
         ('Timor Leste', 'TLS'),
         ('Solomon Islands', 'SLB'),
         ("Costa Rica",'CRI'),
-        ('Panama','PAN')
+        ('Panama','PAN'),
+        ('Mexico','MEX')
     ]
     
 
@@ -376,7 +377,7 @@ if __name__ == "__main__":
         #                        'ZAF', 'TUN', 'IDN', 'AGO', 'ARM', 'LKA', 'MYS', 'CMR', 'HUN', 'MWI', 
         #                        'UZB', 'IND', 'MOZ', 'AZE', 'KGZ', 'MDA', 'KAZ', 'DZA', 'MKD', 'SSD', 
         #                        'LBR', 'PAK', 'NPL', 'NAM', 'BFA', 'TLS',
-                                'MEX','UZB',
+                                'MEX'
                                  ]
     # countries_needed = ['PHL','BFA','AGO','AZE','MWI','BLR','BGD','HUN','XKX','MYS']
 
