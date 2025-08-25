@@ -315,7 +315,7 @@ if __name__ == "__main__":
         time.sleep(t)
 
     # Example: just for 'Panama' (PAN)
-    countries_needed = ['MEX','UZB'
+    countries_needed = ['ENV_TLS','ENV_ARM'
         # 'IND','KGZ','KHM','ZAF', 'DZA',
         #                 'ENV_KGZ','ENV_MRT','ENV_UZB','ENV_IDN', 'ENV_TUN','ENV_ZAF','ENV_PER','ENV_PRY','ENV_PHL','ENV_RWA','ENV_SEN','ENV_TUR','ENV_XKX','ENV_UKR','ENV_DZA','ENV_ECU','ENV_KEN','ENV_MAR','ENV_MEX','ENV_MYS','ENV_MLI']
     # 'PHL','BFA','AGO','AZE','MWI','BLR','BGD','HUN','XKX','MYS','MOZ', 'ARM','IDN','PAN','MKD','KGZ','MDA','SEN','SRB','LBR','NAM','ENV_CMR','ENV_UZB','ENV_KHM','ENV_LBR','ENV_BLR','ENV_GHA', 'ENV_GEO', 'ENV_HUN', 'ENV_JAM'
@@ -455,7 +455,8 @@ if __name__ == "__main__":
         ('Environmental Mozambique', 'ENV_MOZ'),
         ('Environmental India', 'ENV_IND'),
         ('Environmental Timor Leste', 'ENV_TLS'),
-        ('Environmenta Zimbabwe','ENV_ZWE')
+        ('Environmenta Zimbabwe','ENV_ZWE'),
+        ('Environmenta Armenia','ENV_ARM')
      
 
 
