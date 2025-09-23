@@ -114,10 +114,10 @@ def count_domain_loc_funding(uri, domain, country_name, country_code):
                 'US_funding_event': {'$exists': True},
                 'US_funding_sentiment': {'$exists': True},
                 'language': {'$ne': 'en'},
-                '$or': [
-                    {f'cliff_locations.{loc_code}': {'$exists': True}},
-                    {'cliff_locations': {}}
-                ]
+                # '$or': [
+                #     {f'cliff_locations.{loc_code}': {'$exists': True}},
+                #     {'cliff_locations': {}}
+                # ]
             },
             projection=projection,
             batch_size=100
@@ -133,10 +133,10 @@ def count_domain_loc_funding(uri, domain, country_name, country_code):
                 'US_funding_event': {'$exists': True},
                 'US_funding_sentiment': {'$exists': True},
                 'language': 'en',
-                '$or': [
-                    {f'en_cliff_locations.{loc_code}': {'$exists': True}},
-                    {'en_cliff_locations': {}}
-                ]
+                # '$or': [
+                #     {f'en_cliff_locations.{loc_code}': {'$exists': True}},
+                #     {'en_cliff_locations': {}}
+                # ]
             },
             projection=projection,
             batch_size=100
@@ -328,9 +328,9 @@ if __name__ == "__main__":
             p_umap(count_domain_loc_funding, [URI]*len(loc), loc,
                    [country_name]*len(loc), [country_code]*len(loc), num_cpus=10)
 
-        if mlp_int:
-            p_umap(count_domain_int_funding, [URI]*len(mlp_int), mlp_int,
-                   [country_name]*len(mlp_int), [country_code]*len(mlp_int), num_cpus=10)
+        # if mlp_int:
+        #     p_umap(count_domain_int_funding, [URI]*len(mlp_int), mlp_int,
+        #            [country_name]*len(mlp_int), [country_code]*len(mlp_int), num_cpus=10)
 
         commit_message = f"US_funding classifier count ({country_code}) update"
         run_git_commands(commit_message)
