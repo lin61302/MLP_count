@@ -280,7 +280,9 @@ if __name__ == "__main__":
     # Example driver (same style as your env script):
     countries_needed = [
         # put ISO3 codes you want to run, e.g. 'PAN','CRI'
-        'MEX','LBR','MDA','SRB','LKA','KGZ','PHL'
+        # 'MEX','LBR','MDA','SRB','LKA','KGZ','PHL'
+         'MLI','ARM','SLV','ZMB','UGA'
+        
     ]
     all_countries = [
         ('Albania', 'ALB'), ('Benin', 'BEN'), ('Colombia', 'COL'), ('Ecuador', 'ECU'),
@@ -328,9 +330,9 @@ if __name__ == "__main__":
             p_umap(count_domain_loc_funding, [URI]*len(loc), loc,
                    [country_name]*len(loc), [country_code]*len(loc), num_cpus=10)
 
-        # if mlp_int:
-        #     p_umap(count_domain_int_funding, [URI]*len(mlp_int), mlp_int,
-        #            [country_name]*len(mlp_int), [country_code]*len(mlp_int), num_cpus=10)
+        if mlp_int:
+            p_umap(count_domain_int_funding, [URI]*len(mlp_int), mlp_int,
+                   [country_name]*len(mlp_int), [country_code]*len(mlp_int), num_cpus=10)
 
         commit_message = f"US_funding classifier count ({country_code}) update"
         run_git_commands(commit_message)
