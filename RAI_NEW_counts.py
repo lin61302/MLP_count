@@ -425,7 +425,7 @@ if __name__ == "__main__":
     
 
     countries_needed = [
-             'MLI','ARM','SLV','ZMB','UGA'
+             'MOZ','COD','SSD','ZWE','GHA','KHM'
                          ]
     # countries_needed = ['PHL','BFA','AGO','AZE','MWI','BLR','BGD','HUN','XKX','MYS']
 
