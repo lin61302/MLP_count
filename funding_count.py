@@ -282,7 +282,8 @@ if __name__ == "__main__":
         # put ISO3 codes you want to run, e.g. 'PAN','CRI'
         # 'MEX','LBR','MDA','SRB','LKA','KGZ','PHL'
         #  'MOZ','COD','SSD','ZWE','GHA','KHM'
-        'BEN', 'UKR', 'GEO', 'GTM','NIC', 'PRY'
+        # 'BEN', 'UKR', 'GEO', 'GTM','NIC', 'PRY'
+        'MEX','LBR','MDA','SRB','LKA','KGZ','PHL'
         
     ]
     all_countries = [

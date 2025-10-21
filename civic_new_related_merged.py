@@ -701,7 +701,7 @@ if __name__ == '__main__':
     ]
     
 
-    countries_needed = [
+    countries_needed = ['MEX','LBR','MDA','SRB','LKA','KGZ','PHL'
         
                             # 'COL', 'ECU',  'PRY','JAM','HND', 'SLV', 'NIC','PER', 'DOM','PAN', 'CRI','SLB', 
                             # 'BGD','NGA','UGA',
@@ -713,7 +713,8 @@ if __name__ == '__main__':
                             #    'LBR', 'PAK', 'NPL', 'NAM', 'BFA', 'TLS', #'MEX'
                             # 'MEX','UZB',
                             #   'MOZ','COD','SSD','ZWE','GHA','KHM'
-                            'BEN', 'UKR', 'GEO', 'GTM','NIC', 'PRY'
+                            # 'BEN', 'UKR', 'GEO', 'GTM','NIC', 'PRY'
+                            'MDA'
                             # 'IND'
                                ]
     # countries_needed = ['PHL','BFA','AGO','AZE','MWI','BLR','BGD','HUN','XKX','MYS']

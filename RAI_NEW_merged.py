@@ -520,8 +520,10 @@ if __name__ == "__main__":
     ]
     
 
-    countries_needed = [
-        'BEN', 'UKR', 'GEO', 'GTM','NIC', 'PRY'
+    countries_needed = ['MEX','LBR','MDA','SRB','LKA','KGZ','PHL'
+
+
+        # 'BEN', 'UKR', 'GEO', 'GTM','NIC', 'PRY'
             #  'MOZ','COD','SSD','ZWE','GHA','KHM'
                          ]
     # countries_needed = ['PHL','BFA','AGO','AZE','MWI','BLR','BGD','HUN','XKX','MYS']
