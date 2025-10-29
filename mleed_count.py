@@ -115,6 +115,22 @@ def count_domain_loc_env(uri, domain, country_name, country_code):
         )
         docs1 = list(cur1)
 
+        count1 = db_local[colname].count_documents(
+            {
+                'source_domain': domain,
+                'include': True,
+                'environmental_binary': {'$exists': True},
+                # We want env_classifier to exist
+                # 'env_classifier': {'$exists': True},
+                'language': {'$ne': 'en'},
+                # location-based filter
+                '$or': [
+                    {f'cliff_locations.{loc_code}': {'$exists': True}},
+                    {'cliff_locations': {}}
+                ]
+            }
+        )
+
         # English docs
         cur2 = db_local[colname].find(
             {
@@ -132,7 +148,26 @@ def count_domain_loc_env(uri, domain, country_name, country_code):
             batch_size=100
         )
         docs2 = list(cur2)
+
+        count2 = db_local[colname].count_documents(
+            {
+                'source_domain': domain,
+                'include': True,
+                'environmental_binary': {'$exists': True},
+                # 'env_classifier': {'$exists': True},
+                'language': 'en',
+                '$or': [
+                    {f'en_cliff_locations.{loc_code}': {'$exists': True}},
+                    {'en_cliff_locations': {}}
+                ]
+            }
+        )
+
         docs = docs1 + docs2
+
+        counts = count1 + count2   
+
+        df.loc[date,'total_from_source'] = counts    
 
         if not docs:
             continue
@@ -237,6 +272,17 @@ def count_domain_int_env(uri, domain, country_name, country_code):
         )
         docs1 = list(cur1)
 
+        count1 = db_local[colname].count_documents(
+            {
+                'source_domain': domain,
+                'include': True,
+                'environmental_binary':{'$exists': True},
+                # 'env_classifier': {'$exists': True},
+                'language': {'$ne': 'en'},
+                f'cliff_locations.{loc_code}': {'$exists': True}
+            }
+        )
+
         # English docs
         cur2 = db_local[colname].find(
             {
@@ -252,7 +298,20 @@ def count_domain_int_env(uri, domain, country_name, country_code):
         )
         docs2 = list(cur2)
 
+        count2 = db_local[colname].count_documents(
+            {
+                'source_domain': domain,
+                'include': True,
+                'environmental_binary':{'$exists': True},
+                # 'env_classifier': {'$exists': True},
+                'language': 'en',
+                f'en_cliff_locations.{loc_code}': {'$exists': True}
+            }
+        )
+
         docs = docs1 + docs2
+        counts = count1 + count2
+
         if not docs:
             continue
 
@@ -265,6 +324,8 @@ def count_domain_int_env(uri, domain, country_name, country_code):
                 if check_georgia(main_t, 'int') and check_georgia(title_t, 'int'):
                     filtered_docs.append(d)
             docs = filtered_docs
+
+        df.loc[date,'total_from_source'] = counts    
 
         for d in docs:
             try:
@@ -315,7 +376,7 @@ if __name__ == "__main__":
         time.sleep(t)
 
     # Example: just for 'Panama' (PAN)
-    countries_needed = [ 'MEX','LBR','MDA','SRB','LKA','KGZ','PHL'
+    countries_needed = [ 'SLV','HND','GTM','NIC','ENV_SLV','ENV_HND','ENV_GTM','ENV_NIC'
         # 'IND','KGZ','KHM','ZAF', 'DZA',
         #                 'ENV_KGZ','ENV_MRT','ENV_UZB','ENV_IDN', 'ENV_TUN','ENV_ZAF','ENV_PER','ENV_PRY','ENV_PHL','ENV_RWA','ENV_SEN','ENV_TUR','ENV_XKX','ENV_UKR','ENV_DZA','ENV_ECU','ENV_KEN','ENV_MAR','ENV_MEX','ENV_MYS','ENV_MLI']
     # 'PHL','BFA','AGO','AZE','MWI','BLR','BGD','HUN','XKX','MYS','MOZ', 'ARM','IDN','PAN','MKD','KGZ','MDA','SEN','SRB','LBR','NAM','ENV_CMR','ENV_UZB','ENV_KHM','ENV_LBR','ENV_BLR','ENV_GHA', 'ENV_GEO', 'ENV_HUN', 'ENV_JAM'

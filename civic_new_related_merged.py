@@ -771,10 +771,10 @@ if __name__ == '__main__':
             except:
                 pass
         
-        # Git operations
-        countries_added = '/'.join(countries_needed)
-        commit_message = f"civic count ({countries_added}) update"
-        run_git_commands(commit_message)
+    # Git operations
+    countries_added = '/'.join(countries_needed)
+    commit_message = f"civic count ({countries_added}) update"
+    run_git_commands(commit_message)
 
 # screen -S screen_count
 # screen -r screen_count
