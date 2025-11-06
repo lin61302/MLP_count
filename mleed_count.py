@@ -22,6 +22,7 @@ env_labels = list(
     db.models.find_one({'model_name': 'env_classifier'}).get('event_type_nums').keys()
 )
 env_labels.append('total_articles')
+category_labels = [l for l in env_labels if l != 'total_articles']
 
 ################################################################
 # We keep the Georgia location filters, as in your original code
@@ -63,29 +64,22 @@ def check_georgia(doc_text, domain_type):
 ################################################################
 
 def count_domain_loc_env(uri, domain, country_name, country_code):
-    """
-    Count docs from 'local' sources for the specified country_code, 
-    using the 'env_classifier' field. For each doc:
-      - Increment df[env_max] and df[env_sec].
-      - Also increment df['total_articles'].
-    Keep Georgia-specific logic. Output CSV in the new path.
-    """
     db_local = MongoClient(uri).ml4p
 
-    # Prepare empty monthly DataFrame from 2012-1-1 to ~ now
-    df = pd.DataFrame()
-    df['date'] = pd.date_range('2012-1-1', today + pd.Timedelta(31, 'd'), freq='MS')
-    df.index = df['date']
+    # Monthly frame
+    df = pd.DataFrame({'date': pd.date_range('2012-01-01', today + pd.Timedelta(31, 'd'), freq='MS')})
+    df = df.set_index('date')
     df['year'] = df.index.year
     df['month'] = df.index.month
 
-    loc_code = country_code[-3:]
-
-    # Add columns for each environment label + total_articles
+    # Initialize counters
     for label in env_labels:
         df[label] = 0
+    df['total_from_source'] = 0
+    df['total_label_events'] = 0  # (= #max + #sec, per month)
 
-    # We'll fetch only needed fields
+    loc_code = country_code[-3:]
+
     projection_loc = {
         '_id': 1, 'env_classifier': 1, 'date_publish': 1,
         'title_translated': 1, 'maintext_translated': 1,
@@ -95,161 +89,103 @@ def count_domain_loc_env(uri, domain, country_name, country_code):
     for date in df.index:
         colname = f"articles-{date.year}-{date.month}"
 
-        # Non-English docs
-        cur1 = db_local[colname].find(
-            {
-                'source_domain': domain,
-                'include': True,
-                'environmental_binary.result': 'Yes',
-                # We want env_classifier to exist
-                'env_classifier': {'$exists': True},
-                'language': {'$ne': 'en'},
-                # location-based filter
-                '$or': [
-                    {f'cliff_locations.{loc_code}': {'$exists': True}},
-                    {'cliff_locations': {}}
-                ]
-            },
-            projection=projection_loc,
-            batch_size=100
-        )
-        docs1 = list(cur1)
+        # Filters MUST match what we actually count
+        q_non_en = {
+            'source_domain': domain,
+            'include': True,
+            'environmental_binary.result': 'Yes',
+            'env_classifier': {'$exists': True},
+            'language': {'$ne': 'en'},
+            '$or': [
+                {f'cliff_locations.{loc_code}': {'$exists': True}},
+                {'cliff_locations': {}},               # keep if you truly want "empty = allowed"
+                {'cliff_locations': {'$exists': False}}# often needed if field is absent instead of empty
+            ]
+        }
+        q_en = {
+            'source_domain': domain,
+            'include': True,
+            'environmental_binary.result': 'Yes',
+            'env_classifier': {'$exists': True},
+            'language': 'en',
+            '$or': [
+                {f'en_cliff_locations.{loc_code}': {'$exists': True}},
+                {'en_cliff_locations': {}},
+                {'en_cliff_locations': {'$exists': False}}
+            ]
+        }
 
-        count1 = db_local[colname].count_documents(
-            {
-                'source_domain': domain,
-                'include': True,
-                'environmental_binary': {'$exists': True},
-                # We want env_classifier to exist
-                # 'env_classifier': {'$exists': True},
-                'language': {'$ne': 'en'},
-                # location-based filter
-                '$or': [
-                    {f'cliff_locations.{loc_code}': {'$exists': True}},
-                    {'cliff_locations': {}}
-                ]
-            }
-        )
-
-        # English docs
-        cur2 = db_local[colname].find(
-            {
-                'source_domain': domain,
-                'include': True,
-                'environmental_binary.result': 'Yes',
-                'env_classifier': {'$exists': True},
-                'language': 'en',
-                '$or': [
-                    {f'en_cliff_locations.{loc_code}': {'$exists': True}},
-                    {'en_cliff_locations': {}}
-                ]
-            },
-            projection=projection_loc,
-            batch_size=100
-        )
-        docs2 = list(cur2)
-
-        count2 = db_local[colname].count_documents(
-            {
-                'source_domain': domain,
-                'include': True,
-                'environmental_binary': {'$exists': True},
-                # 'env_classifier': {'$exists': True},
-                'language': 'en',
-                '$or': [
-                    {f'en_cliff_locations.{loc_code}': {'$exists': True}},
-                    {'en_cliff_locations': {}}
-                ]
-            }
-        )
-
+        docs1 = list(db_local[colname].find(q_non_en, projection=projection_loc, batch_size=100))
+        docs2 = list(db_local[colname].find(q_en,      projection=projection_loc, batch_size=100))
         docs = docs1 + docs2
 
-        counts = count1 + count2   
+        # Apply Georgia text filter to the same pool
+        if country_code in ('GEO', 'ENV_GEO'):
+            filtered = []
+            for d in docs:
+                title_t = d.get('title_translated', '')
+                main_t  = d.get('maintext_translated', '')
+                if check_georgia(main_t, 'loc') and check_georgia(title_t, 'loc'):
+                    filtered.append(d)
+            docs = filtered
 
-        df.loc[date,'total_from_source'] = counts    
+        # Denominator that matches the numerator pool
+        df.loc[date, 'total_from_source'] = len(docs)
 
         if not docs:
             continue
 
-        # If country_code == 'GEO', we do Georgia text filtering
-        if country_code == 'GEO' or country_code == 'ENV_GEO':
-            filtered_docs = []
-            for d in docs:
-                # Combine text from title + main, or do them separately
-                title_t = d.get('title_translated','')
-                main_t = d.get('maintext_translated','')
-                # Must pass check_georgia in 'loc' mode
-                if check_georgia(main_t, 'loc') and check_georgia(title_t, 'loc'):
-                    filtered_docs.append(d)
-            docs = filtered_docs
+        # Write to the collection month to avoid off-by-month drift
+        doc_date = pd.Timestamp(date.year, date.month, 1)
 
-        # Count each doc
+        # Count categories and label events
+        label_events_this_month = 0
+        counted_docs_this_month = 0
+
         for d in docs:
-            # For date-based indexing
-            # If date_publish fails, parse fallback
-            try:
-                doc_date = pd.Timestamp(d['date_publish'].year, d['date_publish'].month, 1)
-            except:
-                dd = dateparser.parse(d['date_publish']).replace(tzinfo=None)
-                doc_date = pd.Timestamp(dd.year, dd.month, 1)
+            env_info = d.get('env_classifier') or {}
+            env_max = env_info.get('env_max')
+            env_sec = env_info.get('env_sec')
 
-            env_info = d.get('env_classifier')
-            if not env_info:
-                # Should not happen given $exists: True, but just in case
-                continue
-
-            # Grab env_max, env_sec
-            env_max = env_info.get('env_max', None)
-            env_sec = env_info.get('env_sec', None)
-
-            # Possibly skip if they are None or '-999', but user says "double-count is ok"
-            # so let's just count them as is, if they're real labels
-            if env_max in env_labels:
+            if env_max in category_labels:
                 df.loc[doc_date, env_max] += 1
-            if env_sec in env_labels:
+                label_events_this_month += 1
+            if env_sec in category_labels:
                 df.loc[doc_date, env_sec] += 1
+                label_events_this_month += 1
 
-            # Always increment total_articles for any doc
-            df.loc[doc_date, 'total_articles'] += 1
+            counted_docs_this_month += 1
 
-            # If country_code == 'GEO', optionally mark a DB field
-            # (like your original approach with "Country_Georgia")
-            if country_code == 'GEO' or country_code == 'ENV_GEO':
+            if country_code in ('GEO', 'ENV_GEO'):
                 colname_g = f"articles-{doc_date.year}-{doc_date.month}"
-                # Mark in DB if you want. We replicate your pattern:
-                db_local[colname_g].update_one(
-                    {'_id': d['_id']},
-                    {'$set': {'Country_Georgia': 'Yes'}}
-                )
+                db_local[colname_g].update_one({'_id': d['_id']}, {'$set': {'Country_Georgia': 'Yes'}})
 
-    # Finally, write the CSV output
+        df.loc[doc_date, 'total_articles']     += counted_docs_this_month
+        df.loc[doc_date, 'total_label_events'] += label_events_this_month
+
     out_path = f'/home/ml4p/Dropbox/Dropbox/ML for Peace/Counts_Env/{country_name}/{today.year}_{today.month}_{today.day}/'
     Path(out_path).mkdir(parents=True, exist_ok=True)
     df.to_csv(os.path.join(out_path, f'{domain}.csv'))
 
 
+
 def count_domain_int_env(uri, domain, country_name, country_code):
-    """
-    Same logic as count_domain_loc_env, but now it's 'international' articles
-    that must have cliff_locations.<country_code> or en_cliff_locations.<country_code> 
-    strictly present (no empty dict). We keep the original approach from your script.
-    """
     db_local = MongoClient(uri).ml4p
 
-    df = pd.DataFrame()
-    df['date'] = pd.date_range('2012-1-1', today + pd.Timedelta(31, 'd'), freq='MS')
-    df.index = df['date']
+    df = pd.DataFrame({'date': pd.date_range('2012-01-01', today + pd.Timedelta(31, 'd'), freq='MS')})
+    df = df.set_index('date')
     df['year'] = df.index.year
     df['month'] = df.index.month
 
-    loc_code = country_code[-3:]
-
     for label in env_labels:
         df[label] = 0
+    df['total_from_source'] = 0
+    df['total_label_events'] = 0
+
+    loc_code = country_code[-3:]
 
     projection_int = {
-        '_id': 1, 'env_binary': 1, 'env_classifier': 1, 'date_publish': 1,
+        '_id': 1, 'env_classifier': 1, 'date_publish': 1,
         'title_translated': 1, 'maintext_translated': 1,
         'cliff_locations': 1, 'en_cliff_locations': 1
     }
@@ -257,107 +193,72 @@ def count_domain_int_env(uri, domain, country_name, country_code):
     for date in df.index:
         colname = f"articles-{date.year}-{date.month}"
 
-        # Non-English docs
-        cur1 = db_local[colname].find(
-            {
-                'source_domain': domain,
-                'include': True,
-                'environmental_binary.result': 'Yes',
-                'env_classifier': {'$exists': True},
-                'language': {'$ne': 'en'},
-                f'cliff_locations.{loc_code}': {'$exists': True}
-            },
-            projection=projection_int,
-            batch_size=100
-        )
-        docs1 = list(cur1)
+        # Require location to be present (no empty dict) for INT
+        q_non_en = {
+            'source_domain': domain,
+            'include': True,
+            'environmental_binary.result': 'Yes',
+            'env_classifier': {'$exists': True},
+            'language': {'$ne': 'en'},
+            f'cliff_locations.{loc_code}': {'$exists': True}
+        }
+        q_en = {
+            'source_domain': domain,
+            'include': True,
+            'environmental_binary.result': 'Yes',
+            'env_classifier': {'$exists': True},
+            'language': 'en',
+            f'en_cliff_locations.{loc_code}': {'$exists': True}
+        }
 
-        count1 = db_local[colname].count_documents(
-            {
-                'source_domain': domain,
-                'include': True,
-                'environmental_binary':{'$exists': True},
-                # 'env_classifier': {'$exists': True},
-                'language': {'$ne': 'en'},
-                f'cliff_locations.{loc_code}': {'$exists': True}
-            }
-        )
-
-        # English docs
-        cur2 = db_local[colname].find(
-            {
-                'source_domain': domain,
-                'include': True,
-                'environmental_binary.result': 'Yes',
-                'env_classifier': {'$exists': True},
-                'language': 'en',
-                f'en_cliff_locations.{loc_code}': {'$exists': True}
-            },
-            projection=projection_int,
-            batch_size=100
-        )
-        docs2 = list(cur2)
-
-        count2 = db_local[colname].count_documents(
-            {
-                'source_domain': domain,
-                'include': True,
-                'environmental_binary':{'$exists': True},
-                # 'env_classifier': {'$exists': True},
-                'language': 'en',
-                f'en_cliff_locations.{loc_code}': {'$exists': True}
-            }
-        )
-
+        docs1 = list(db_local[colname].find(q_non_en, projection=projection_int, batch_size=100))
+        docs2 = list(db_local[colname].find(q_en,     projection=projection_int, batch_size=100))
         docs = docs1 + docs2
-        counts = count1 + count2
+
+        if country_code in ('GEO', 'ENV_GEO'):
+            filtered = []
+            for d in docs:
+                title_t = d.get('title_translated', '')
+                main_t  = d.get('maintext_translated', '')
+                if check_georgia(main_t, 'int') and check_georgia(title_t, 'int'):
+                    filtered.append(d)
+            docs = filtered
+
+        # Always set this, even when docs == []
+        df.loc[date, 'total_from_source'] = len(docs)
 
         if not docs:
             continue
 
-        # If GEO, filter text using the "int" pattern
-        if country_code == 'GEO' or country_code == 'ENV_GEO':
-            filtered_docs = []
-            for d in docs:
-                title_t = d.get('title_translated','')
-                main_t = d.get('maintext_translated','')
-                if check_georgia(main_t, 'int') and check_georgia(title_t, 'int'):
-                    filtered_docs.append(d)
-            docs = filtered_docs
-
-        df.loc[date,'total_from_source'] = counts    
+        doc_date = pd.Timestamp(date.year, date.month, 1)
+        label_events_this_month = 0
+        counted_docs_this_month = 0
 
         for d in docs:
-            try:
-                doc_date = pd.Timestamp(d['date_publish'].year, d['date_publish'].month, 1)
-            except:
-                dd = dateparser.parse(d['date_publish']).replace(tzinfo=None)
-                doc_date = pd.Timestamp(dd.year, dd.month, 1)
+            env_info = d.get('env_classifier') or {}
+            env_max = env_info.get('env_max')
+            env_sec = env_info.get('env_sec')
 
-            env_info = d.get('env_classifier')
-            if not env_info:
-                continue
-
-            env_max = env_info.get('env_max', None)
-            env_sec = env_info.get('env_sec', None)
-
-            if env_max in env_labels:
+            if env_max in category_labels:
                 df.loc[doc_date, env_max] += 1
-            if env_sec in env_labels:
+                label_events_this_month += 1
+            if env_sec in category_labels:
                 df.loc[doc_date, env_sec] += 1
+                label_events_this_month += 1
 
-            df.loc[doc_date, 'total_articles'] += 1
+            counted_docs_this_month += 1
 
-            if country_code == 'GEO' or country_code == 'ENV_GEO':
+            if country_code in ('GEO', 'ENV_GEO'):
                 colname_g = f"articles-{doc_date.year}-{doc_date.month}"
-                db_local[colname_g].update_one(
-                    {'_id': d['_id']},
-                    {'$set': {'Country_Georgia': 'Yes'}}
-                )
+                db_local[colname_g].update_one({'_id': d['_id']}, {'$set': {'Country_Georgia': 'Yes'}})
+
+        df.loc[doc_date, 'total_articles']     += counted_docs_this_month
+        df.loc[doc_date, 'total_label_events'] += label_events_this_month
 
     out_path = f'/home/ml4p/Dropbox/Dropbox/ML for Peace/Counts_Env/{country_name}/{today.year}_{today.month}_{today.day}/'
     Path(out_path).mkdir(parents=True, exist_ok=True)
     df.to_csv(os.path.join(out_path, f'{domain}.csv'))
+
 
 def run_git_commands(commit_message):
     try:
@@ -549,7 +450,10 @@ if __name__ == "__main__":
 
         # For international and regionals sources
         if 'ENV_' not in country_code:
-            p_umap(count_domain_int_env, [uri]*len(mlp_int), ints, [country_name]*len(mlp_int), [country_code]*len(mlp_int), num_cpus=10)
+            p_umap(count_domain_int_env,
+                [uri]*len(mlp_int), mlp_int,
+                [country_name]*len(mlp_int), [country_code]*len(mlp_int),
+                num_cpus=10)
 
         # For environmental international and regionals sources
         if 'ENV_' in country_code:
