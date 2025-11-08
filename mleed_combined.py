@@ -68,8 +68,9 @@ def monthly_frame(start='2012-01-01'):
     # initialize counters
     for label in env_labels:
         df[label] = 0
-    df['total_from_source'] = 0
-    df['total_label_events'] = 0
+    df['total_from_source'] = 0          # environmental docs per source/month (as before)
+    df['total_label_events'] = 0          # env_max + env_sec
+    df['total_local_docs'] = 0            # NEW: all local-considered docs per source/month (denominator contributor)
     return df
 
 def sum_dfs(dfs):
@@ -93,6 +94,16 @@ projection_common = {
 # -----------------------------
 # Per-domain counting functions
 # -----------------------------
+def _apply_georgia_docs(docs, mode):
+    """Filter docs list with Georgia rules for 'loc' or 'int'."""
+    filtered = []
+    for d in docs:
+        title_t = d.get('title_translated', '')
+        main_t  = d.get('maintext_translated', '')
+        if check_georgia(main_t, mode) and check_georgia(title_t, mode):
+            filtered.append(d)
+    return filtered
+
 def count_domain_loc_env(args):
     """
     Count for a single 'local-like' domain:
@@ -108,11 +119,10 @@ def count_domain_loc_env(args):
     for date in df.index:
         colname = f"articles-{date.year}-{date.month}"
 
-        q_non_en = {
+        # --------- Denominator queries (ALL local-considered docs; no env filters) ----------
+        q_all_non_en = {
             'source_domain': domain,
             'include': True,
-            'environmental_binary.result': 'Yes',
-            'env_classifier': {'$exists': True},
             'language': {'$ne': 'en'},
             '$or': [
                 {f'cliff_locations.{loc_code}': {'$exists': True}},
@@ -120,11 +130,9 @@ def count_domain_loc_env(args):
                 {'cliff_locations': {'$exists': False}}
             ]
         }
-        q_en = {
+        q_all_en = {
             'source_domain': domain,
             'include': True,
-            'environmental_binary.result': 'Yes',
-            'env_classifier': {'$exists': True},
             'language': 'en',
             '$or': [
                 {f'en_cliff_locations.{loc_code}': {'$exists': True}},
@@ -133,22 +141,39 @@ def count_domain_loc_env(args):
             ]
         }
 
-        docs1 = list(db_local[colname].find(q_non_en, projection=projection_common, batch_size=100))
-        docs2 = list(db_local[colname].find(q_en,     projection=projection_common, batch_size=100))
-        docs = docs1 + docs2
-
-        # Georgia filter
+        # Fast path: count_documents unless Georgia (needs text)
         if country_code in ('GEO', 'ENV_GEO'):
-            filtered = []
-            for d in docs:
-                title_t = d.get('title_translated', '')
-                main_t  = d.get('maintext_translated', '')
-                if check_georgia(main_t, 'loc') and check_georgia(title_t, 'loc'):
-                    filtered.append(d)
-            docs = filtered
+            docs_all1 = list(db_local[colname].find(q_all_non_en, projection=projection_common, batch_size=100))
+            docs_all2 = list(db_local[colname].find(q_all_en,     projection=projection_common, batch_size=100))
+            docs_all  = _apply_georgia_docs(docs_all1 + docs_all2, 'loc')
+            denom_count = len(docs_all)
+        else:
+            denom_count = db_local[colname].count_documents(q_all_non_en) + db_local[colname].count_documents(q_all_en)
 
-        # Denominator (per domain)
-        df.loc[date, 'total_from_source'] = len(docs)
+        # --------- Numerator pool (ENV docs only; same as before) ----------
+        q_env_non_en = {
+            **q_all_non_en,
+            'environmental_binary.result': 'Yes',
+            'env_classifier': {'$exists': True},
+        }
+        q_env_en = {
+            **q_all_en,
+            'environmental_binary.result': 'Yes',
+            'env_classifier': {'$exists': True},
+        }
+
+        docs1 = list(db_local[colname].find(q_env_non_en, projection=projection_common, batch_size=100))
+        docs2 = list(db_local[colname].find(q_env_en,     projection=projection_common, batch_size=100))
+        docs  = docs1 + docs2
+
+        # Georgia filter for numerator too
+        if country_code in ('GEO', 'ENV_GEO'):
+            docs = _apply_georgia_docs(docs, 'loc')
+
+        # Record denominators
+        df.loc[date, 'total_local_docs'] = denom_count          # NEW denominator contributor
+        df.loc[date, 'total_from_source'] = len(docs)           # environmental docs (as before)
+
         if not docs:
             continue
 
@@ -170,7 +195,6 @@ def count_domain_loc_env(args):
 
             counted_docs_this_month += 1
 
-            # Optional DB mark for Georgia
             if country_code in ('GEO', 'ENV_GEO'):
                 colname_g = f"articles-{doc_date.year}-{doc_date.month}"
                 db_local[colname_g].update_one({'_id': d['_id']}, {'$set': {'Country_Georgia': 'Yes'}})
@@ -195,38 +219,51 @@ def count_domain_int_env(args):
     for date in df.index:
         colname = f"articles-{date.year}-{date.month}"
 
-        q_non_en = {
+        # --------- Denominator queries (ALL local-considered docs; no env filters) ----------
+        q_all_non_en = {
             'source_domain': domain,
             'include': True,
-            'environmental_binary.result': 'Yes',
-            'env_classifier': {'$exists': True},
             'language': {'$ne': 'en'},
             f'cliff_locations.{loc_code}': {'$exists': True}
         }
-        q_en = {
+        q_all_en = {
             'source_domain': domain,
             'include': True,
-            'environmental_binary.result': 'Yes',
-            'env_classifier': {'$exists': True},
             'language': 'en',
             f'en_cliff_locations.{loc_code}': {'$exists': True}
         }
 
-        docs1 = list(db_local[colname].find(q_non_en, projection=projection_common, batch_size=100))
-        docs2 = list(db_local[colname].find(q_en,     projection=projection_common, batch_size=100))
-        docs = docs1 + docs2
-
-        # Georgia filter
         if country_code in ('GEO', 'ENV_GEO'):
-            filtered = []
-            for d in docs:
-                title_t = d.get('title_translated', '')
-                main_t  = d.get('maintext_translated', '')
-                if check_georgia(main_t, 'int') and check_georgia(title_t, 'int'):
-                    filtered.append(d)
-            docs = filtered
+            docs_all1 = list(db_local[colname].find(q_all_non_en, projection=projection_common, batch_size=100))
+            docs_all2 = list(db_local[colname].find(q_all_en,     projection=projection_common, batch_size=100))
+            docs_all  = _apply_georgia_docs(docs_all1 + docs_all2, 'int')
+            denom_count = len(docs_all)
+        else:
+            denom_count = db_local[colname].count_documents(q_all_non_en) + db_local[colname].count_documents(q_all_en)
 
+        # --------- Numerator pool (ENV docs only; same as before) ----------
+        q_env_non_en = {
+            **q_all_non_en,
+            'environmental_binary.result': 'Yes',
+            'env_classifier': {'$exists': True},
+        }
+        q_env_en = {
+            **q_all_en,
+            'environmental_binary.result': 'Yes',
+            'env_classifier': {'$exists': True},
+        }
+
+        docs1 = list(db_local[colname].find(q_env_non_en, projection=projection_common, batch_size=100))
+        docs2 = list(db_local[colname].find(q_env_en,     projection=projection_common, batch_size=100))
+        docs  = docs1 + docs2
+
+        if country_code in ('GEO', 'ENV_GEO'):
+            docs = _apply_georgia_docs(docs, 'int')
+
+        # Record denominators
+        df.loc[date, 'total_local_docs'] = denom_count
         df.loc[date, 'total_from_source'] = len(docs)
+
         if not docs:
             continue
 
@@ -266,10 +303,10 @@ def process_country(uri, country_name, country_code, num_cpus=10):
       - Pull local (ABC), env-local (ENV_ABC), int+regional sources
       - Count per domain in parallel
       - Aggregate raw across all sources
-      - Normalize per month by total_from_source across all sources
+      - Normalize per month by TOTAL LOCAL DOCS across all sources (new requirement)
       - Write:
-          (A) Country-level (raw + _norm) -> Counts_Env_Norm_Final/{country}/{date}/{country}.csv
-          (B) Source-level normalized-only -> Counts_Env_Norm/{country}/{date}/{domain}.csv
+          (A) Country-level (raw + _norm) -> Counts_Env_Norm/Final/{country}/{date}/{country}.csv
+          (B) Source-level normalized-only -> Counts_Env_Norm/By_Source/{country}/{date}/{domain}.csv
     """
     db_mongo = MongoClient(uri).ml4p
 
@@ -312,27 +349,28 @@ def process_country(uri, country_name, country_code, num_cpus=10):
     # 3) Aggregate raw across all sources (country-level raw)
     country_raw = sum_dfs(all_domain_dfs)
 
-    # 4) Robust denominator: float + mask zeros to NaN (avoid .replace recursion issues)
-    denom_docs = country_raw['total_from_source'].astype('float64')
-    denom_docs = denom_docs.mask(denom_docs == 0, np.nan)
+    # 4) Denominator: sum over sources of total_local_docs per month
+    denom_docs = country_raw['total_local_docs'].astype('float64')
+    denom_docs = denom_docs.mask(denom_docs == 0, np.nan)  # robust against zero
 
-    # 5) Country-level normalization: per-month denom = sum total_from_source across all sources
+    # 5) Country-level normalization: per-month denom = TOTAL LOCAL DOCS (all sources)
     for label in category_labels:
         country_raw[label + '_norm'] = country_raw[label].astype('float64') / denom_docs
 
-    # Restore year/month (in case of dtype changes)
+    # Restore year/month
     country_raw['year'] = country_raw.index.year
     country_raw['month'] = country_raw.index.month
 
     # 6) Write country-level (raw + _norm) to Counts_Env_Norm_Final
-    out_country_dir = f'/home/ml4p/Dropbox/Dropbox/ML for Peace/Counts_Env_Norm_Final/{country_name}/{today.year}_{today.month}_{today.day}/'
+    out_country_dir = f'/home/ml4p/Dropbox/Dropbox/ML for Peace/Counts_Env_Norm/Final/{country_name}/{today.year}_{today.month}_{today.day}/'
     Path(out_country_dir).mkdir(parents=True, exist_ok=True)
     country_outfile = os.path.join(out_country_dir, f'{country_name}.csv')
     country_raw.sort_index().to_csv(country_outfile)
     print(f"[{country_code}] Country-level (raw + norm) written: {country_outfile}")
 
-    # 7) Source-level normalized outputs (numeric columns except year/month)
-    out_source_dir = f'/home/ml4p/Dropbox/Dropbox/ML for Peace/Counts_Env_Norm/{country_name}/{today.year}_{today.month}_{today.day}/'
+    # 7) Source-level normalized outputs (numeric columns except year/month),
+    #    using the SAME cross-source denominator (TOTAL LOCAL DOCS).
+    out_source_dir = f'/home/ml4p/Dropbox/Dropbox/ML for Peace/Counts_Env_Norm/By_Source/{country_name}/{today.year}_{today.month}_{today.day}/'
     Path(out_source_dir).mkdir(parents=True, exist_ok=True)
 
     for domain, df in domain_to_df.items():
