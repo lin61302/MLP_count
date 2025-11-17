@@ -614,7 +614,10 @@ if __name__ == '__main__':
     ]
 
     # Edit this to run a batch
-    countries_needed = ['ARM','BLR','KGZ','MKD','MDA','SRB','SLV','DOM','NIC','PRY','KHM','LKA','LBR','ZMB','ZWE','ECU','ALB','MEX','PHL','UZB','AGO','XKX','MKD','BFA','CMR']
+    countries_needed = [
+        # 'ARM','BLR','KGZ','MKD','MDA','SRB','SLV','DOM','NIC','PRY','KHM','LKA','LBR','ZMB','ZWE','ECU','ALB','MEX','PHL','UZB','AGO','XKX','MKD','BFA','CMR'
+        'AZE','GEO','HUN','UKR'
+        ]
     countries = [(n,c) for (n,c) in all_countries if c in countries_needed]
 
     for country_name, country_code in countries:

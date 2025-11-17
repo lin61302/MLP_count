@@ -558,7 +558,10 @@ if __name__ == "__main__":
         ('Costa Rica', 'CRI'), ('Panama', 'PAN'), ('Mexico', 'MEX')
     ]
 
-    countries_needed = ['ARM','BLR','KGZ','MKD','MDA','SRB','SLV','DOM','NIC','PRY','KHM','LKA','LBR','ZMB','ZWE','ECU','ALB','MEX','PHL','UZB','AGO','XKX','MKD','BFA','CMR']
+    countries_needed = [
+        # 'ARM','BLR','KGZ','MKD','MDA','SRB','SLV','DOM','NIC','PRY','KHM','LKA','LBR','ZMB','ZWE','ECU','ALB','MEX','PHL','UZB','AGO','XKX','MKD','BFA','CMR'
+        'AZE','GEO','HUN','UKR'
+        ]
     countries = [(name, code) for (name, code) in all_countries if code in countries_needed]
 
     for country_name, country_code in countries:
