@@ -7,12 +7,12 @@ Normalization denominator per month = ALL articles considered local
 across ALL sources (locals lenient, int/reg strict), with no RAI filters.
 
 Outputs:
-- Original per-source raw (unchanged):
-  Counts_RAI_New/{country}/{YYYY_M_D}/{China|Russia|Combined}/{domain}.csv
-- New country-level (raw + _norm):
-  Counts_RAI_New/Final/{country}/{YYYY_M_D}/{country}_{China|Russia|Combined}.csv
+- New country-level (norm):
+  Counts_RAI_New/Final_Aggregated/{country}/{YYYY_M_D}/{country}_{China|Russia|Combined}.csv
 - New by-source normalized (divide every numeric col except year/month by country-month denominator):
-  Counts_RAI_New/By_Source/{country}/{YYYY_M_D}/{China|Russia|Combined}/{domain}.csv
+  Counts_RAI_New/Normalized_By_Source/{country}/{YYYY_M_D}/{China|Russia|Combined}/{domain}.csv
+- New by-source raw:
+  Counts_RAI_New/Raw_By_Source/{country}/{YYYY_M_D}/{China|Russia|Combined}/{domain}.csv
 """
 
 import os
@@ -203,7 +203,7 @@ def _count_events(docs, chosen_event_types, country_code, scope):
     return counts
 
 def _write_raw_csv(df, country_name, domain, bucket):
-    base = f"/home/ml4p/Dropbox/Dropbox/ML for Peace/Counts_RAI_New/{country_name}/{today.year}_{today.month}_{today.day}/{bucket}/"
+    base = f"/home/ml4p/Dropbox/Dropbox/ML for Peace/Counts_RAI_New/Raw_By_Source/{country_name}/{today.year}_{today.month}_{today.day}/{bucket}/"
     Path(base).mkdir(parents=True, exist_ok=True)
     df.to_csv(os.path.join(base, f"{domain}.csv"))
 
@@ -497,14 +497,14 @@ def process_country(uri, country_name, country_code, num_cpus=10):
         country_cb_raw[et + '_norm'] = country_cb_raw[et].astype('float64') / denom_series
 
     # Write country-level Final
-    out_final = f"/home/ml4p/Dropbox/Dropbox/ML for Peace/Counts_RAI_New/Final/{country_name}/{today.year}_{today.month}_{today.day}/"
+    out_final = f"/home/ml4p/Dropbox/Dropbox/ML for Peace/Counts_RAI_New/Final_Aggregated/{country_name}/{today.year}_{today.month}_{today.day}/"
     Path(out_final).mkdir(parents=True, exist_ok=True)
     country_ch_raw.sort_index().to_csv(os.path.join(out_final, f"{country_name}_China.csv"))
     country_ru_raw.sort_index().to_csv(os.path.join(out_final, f"{country_name}_Russia.csv"))
     country_cb_raw.sort_index().to_csv(os.path.join(out_final, f"{country_name}_Combined.csv"))
 
     # Write by-source normalized (divide numeric cols except year/month)
-    out_by_source = f"/home/ml4p/Dropbox/Dropbox/ML for Peace/Counts_RAI_New/By_Source/{country_name}/{today.year}_{today.month}_{today.day}/"
+    out_by_source = f"/home/ml4p/Dropbox/Dropbox/ML for Peace/Counts_RAI_New/Normalized_By_Source/{country_name}/{today.year}_{today.month}_{today.day}/"
     for bucket in ['China','Russia','Combined']:
         Path(os.path.join(out_by_source, bucket)).mkdir(parents=True, exist_ok=True)
 
@@ -560,7 +560,8 @@ if __name__ == "__main__":
 
     countries_needed = [
         # 'ARM','BLR','KGZ','MKD','MDA','SRB','SLV','DOM','NIC','PRY','KHM','LKA','LBR','ZMB','ZWE','ECU','ALB','MEX','PHL','UZB','AGO','XKX','MKD','BFA','CMR'
-        'AZE','GEO','HUN','UKR'
+        # 'IND','IDN','HUN','AZE','CRI','ECU','ETH','BGD','COL','DZA'
+        'IND','IDN','HUN','AZE','CRI','ECU','ETH','BGD','COL','DZA','SRB'
         ]
     countries = [(name, code) for (name, code) in all_countries if code in countries_needed]
 

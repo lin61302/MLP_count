@@ -303,10 +303,14 @@ def process_country(uri, country_name, country_code, num_cpus=10):
       - Pull local (ABC), env-local (ENV_ABC), int+regional sources
       - Count per domain in parallel
       - Aggregate raw across all sources
-      - Normalize per month by TOTAL LOCAL DOCS across all sources (new requirement)
+      - Normalize per month by TOTAL LOCAL DOCS across all sources
       - Write:
-          (A) Country-level (raw + _norm) -> Counts_Env_Norm/Final/{country}/{date}/{country}.csv
-          (B) Source-level normalized-only -> Counts_Env_Norm/By_Source/{country}/{date}/{domain}.csv
+          (A) Country-level (raw + _norm)
+              -> Counts_Env_Norm/Final_Aggregated/{country}/{date}/{country}.csv
+          (B) Source-level RAW
+              -> Counts_Env_Norm/Raw_By_Source/{country}/{date}/{domain}.csv
+          (C) Source-level NORMALIZED (same cross-source denominator)
+              -> Counts_Env_Norm/Normalized_By_Source/{country}/{date}/{domain}.csv
     """
     db_mongo = MongoClient(uri).ml4p
 
@@ -337,7 +341,7 @@ def process_country(uri, country_name, country_code, num_cpus=10):
     dfs_loc = p_umap(count_domain_loc_env, loc_args, num_cpus=num_cpus) if loc_args else []
     dfs_int = p_umap(count_domain_int_env, int_args, num_cpus=num_cpus) if int_args else []
 
-    # Map domain -> df for later per-source normalization output
+    # Map domain -> df for later outputs
     domain_to_df = {}
     for d, df in zip(loc_like_domains, dfs_loc):
         domain_to_df[d] = df
@@ -345,6 +349,14 @@ def process_country(uri, country_name, country_code, num_cpus=10):
         domain_to_df[d] = df
 
     all_domain_dfs = list(domain_to_df.values())
+
+    # 2a) NEW: write RAW BY SOURCE before any normalization
+    out_raw_dir = f'/home/ml4p/Dropbox/Dropbox/ML for Peace/Counts_Env/Raw_By_Source/{country_name}/{today.year}_{today.month}_{today.day}/'
+    Path(out_raw_dir).mkdir(parents=True, exist_ok=True)
+
+    for domain, df in domain_to_df.items():
+        raw_outfile = os.path.join(out_raw_dir, f'{domain}.csv')
+        df.sort_index().to_csv(raw_outfile)
 
     # 3) Aggregate raw across all sources (country-level raw)
     country_raw = sum_dfs(all_domain_dfs)
@@ -361,16 +373,15 @@ def process_country(uri, country_name, country_code, num_cpus=10):
     country_raw['year'] = country_raw.index.year
     country_raw['month'] = country_raw.index.month
 
-    # 6) Write country-level (raw + _norm) to Counts_Env_Norm_Final
-    out_country_dir = f'/home/ml4p/Dropbox/Dropbox/ML for Peace/Counts_Env_Norm/Final/{country_name}/{today.year}_{today.month}_{today.day}/'
+    # 6) Write country-level (raw + _norm) to Final_Aggregated
+    out_country_dir = f'/home/ml4p/Dropbox/Dropbox/ML for Peace/Counts_Env/Final_Aggregated/{country_name}/{today.year}_{today.month}_{today.day}/'
     Path(out_country_dir).mkdir(parents=True, exist_ok=True)
     country_outfile = os.path.join(out_country_dir, f'{country_name}.csv')
     country_raw.sort_index().to_csv(country_outfile)
     print(f"[{country_code}] Country-level (raw + norm) written: {country_outfile}")
 
-    # 7) Source-level normalized outputs (numeric columns except year/month),
-    #    using the SAME cross-source denominator (TOTAL LOCAL DOCS).
-    out_source_dir = f'/home/ml4p/Dropbox/Dropbox/ML for Peace/Counts_Env_Norm/By_Source/{country_name}/{today.year}_{today.month}_{today.day}/'
+    # 7) Source-level NORMALIZED outputs (using same cross-source denominator)
+    out_source_dir = f'/home/ml4p/Dropbox/Dropbox/ML for Peace/Counts_Env/Normalized_By_Source/{country_name}/{today.year}_{today.month}_{today.day}/'
     Path(out_source_dir).mkdir(parents=True, exist_ok=True)
 
     for domain, df in domain_to_df.items():
@@ -378,17 +389,18 @@ def process_country(uri, country_name, country_code, num_cpus=10):
         aligned = denom_docs.reindex(df_norm.index)
 
         # Select numeric columns and exclude year/month from normalization
-        numeric_cols = [c for c in df_norm.columns
-                        if pd.api.types.is_numeric_dtype(df_norm[c]) and c not in ('year', 'month')]
+        numeric_cols = [
+            c for c in df_norm.columns
+            if pd.api.types.is_numeric_dtype(df_norm[c]) and c not in ('year', 'month')
+        ]
 
-        # Cast to float to avoid integer NA issues; then divide
         df_norm[numeric_cols] = df_norm[numeric_cols].astype('float64').div(aligned, axis=0)
 
-        # Keep same column names (no suffix) per request
         domain_outfile = os.path.join(out_source_dir, f'{domain}.csv')
         df_norm.sort_index().to_csv(domain_outfile)
 
     return country_outfile
+
 
 # -----------------------------
 # Git helper (unchanged)
@@ -434,7 +446,10 @@ if __name__ == "__main__":
     ]
 
     # Specify base codes to process (no ENV_ codes needed)
-    countries_needed = ['NIC']  # <-- edit this list as needed
+    countries_needed = [
+        'IND','IDN','HUN','AZE','CRI','ECU','ETH','BGD','COL','DZA','SRB'
+
+    ]  # <-- edit this list as needed
     countries = [(name, code) for (name, code) in all_countries if code in countries_needed]
 
     for (country_name, country_code) in countries:

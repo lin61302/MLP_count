@@ -7,16 +7,18 @@ Normalization denominator per month = ALL articles considered local
 across ALL sources (locals lenient, int/reg strict), with no civic filters.
 
 Outputs:
-- Original per-source raw (unchanged):
-  Counts_Civic_New/{country}/{YYYY_M_D}/Combined|Civic_Related|Non_Civic_Related/{domain}.csv
-- New country-level (raw + _norm):
-  Counts_Civic_New_Norm/Final/{country}/{YYYY_M_D}/{country}_Combined.csv
-  Counts_Civic_New_Norm/Final/{country}/{YYYY_M_D}/{country}_Civic_Related.csv
-  Counts_Civic_New_Norm/Final/{country}/{YYYY_M_D}/{country}_Non_Civic_Related.csv
+- New country-level (norm):
+  Counts_Civic_New/Final_Aggregated/{country}/{YYYY_M_D}/{country}_Combined.csv
+  Counts_Civic_New/Final_Aggregated/{country}/{YYYY_M_D}/{country}_Civic_Related.csv
+  Counts_Civic_New/Final_Aggregated/{country}/{YYYY_M_D}/{country}_Non_Civic_Related.csv
 - New by-source normalized (divide every numeric col except year/month by country-month denominator):
-  Counts_Civic_New/By_Source/{country}/{YYYY_M_D}/Combined/{domain}.csv
-  Counts_Civic_New/By_Source/{country}/{YYYY_M_D}/Civic_Related/{domain}.csv
-  Counts_Civic_New/By_Source/{country}/{YYYY_M_D}/Non_Civic_Related/{domain}.csv
+  Counts_Civic_New/Normalized_By_Source/{country}/{YYYY_M_D}/Combined/{domain}.csv
+  Counts_Civic_New/Normalized_By_Source/{country}/{YYYY_M_D}/Civic_Related/{domain}.csv
+  Counts_Civic_New/Normalized_By_Source/{country}/{YYYY_M_D}/Non_Civic_Related/{domain}.csv
+- New by-source raw:
+  Counts_Civic_New/Raw_By_Source/{country}/{YYYY_M_D}/Combined/{domain}.csv
+  Counts_Civic_New/Raw_By_Source/{country}/{YYYY_M_D}/Civic_Related/{domain}.csv
+  Counts_Civic_New/Raw_By_Source/{country}/{YYYY_M_D}/Non_Civic_Related/{domain}.csv
 """
 import os
 from pathlib import Path
@@ -356,7 +358,7 @@ def count_domain_loc_merged(uri, domain, country_name, country_code):
                     pass
 
     # write original per-source raw outputs (unchanged)
-    base = f"/home/ml4p/Dropbox/Dropbox/ML for Peace/Counts_Civic_New/{country_name}/{today.year}_{today.month}_{today.day}/"
+    base = f"/home/ml4p/Dropbox/Dropbox/ML for Peace/Counts_Civic_New/Raw_By_Source/{country_name}/{today.year}_{today.month}_{today.day}/"
     Path(base + "Combined/").mkdir(parents=True, exist_ok=True)
     Path(base + "Civic_Related/").mkdir(parents=True, exist_ok=True)
     Path(base + "Non_Civic_Related/").mkdir(parents=True, exist_ok=True)
@@ -410,7 +412,7 @@ def count_domain_int_merged(uri, domain, country_name, country_code):
             df_nonrel.loc[date, et] = v
 
     # write original per-source raw outputs (unchanged)
-    base = f"/home/ml4p/Dropbox/Dropbox/ML for Peace/Counts_Civic_New/{country_name}/{today.year}_{today.month}_{today.day}/"
+    base = f"/home/ml4p/Dropbox/Dropbox/ML for Peace/Counts_Civic_New/Raw_By_Source/{country_name}/{today.year}_{today.month}_{today.day}/"
     Path(base + "Combined/").mkdir(parents=True, exist_ok=True)
     Path(base + "Civic_Related/").mkdir(parents=True, exist_ok=True)
     Path(base + "Non_Civic_Related/").mkdir(parents=True, exist_ok=True)
@@ -552,14 +554,14 @@ def process_country(uri, country_name, country_code, num_cpus=10):
         country_nonrel_raw[et + '_norm'] = country_nonrel_raw[et].astype('float64') / denom_series
 
     # Write country-level (raw + _norm)
-    out_final_base = f"/home/ml4p/Dropbox/Dropbox/ML for Peace/Counts_Civic_New_Norm/Final/{country_name}/{today.year}_{today.month}_{today.day}/"
+    out_final_base = f"/home/ml4p/Dropbox/Dropbox/ML for Peace/Counts_Civic_New/Final_Aggregated/{country_name}/{today.year}_{today.month}_{today.day}/"
     Path(out_final_base).mkdir(parents=True, exist_ok=True)
     country_comb_raw.sort_index().to_csv(os.path.join(out_final_base, f"{country_name}_Combined.csv"))
     country_rel_raw.sort_index().to_csv(os.path.join(out_final_base, f"{country_name}_Civic_Related.csv"))
     country_nonrel_raw.sort_index().to_csv(os.path.join(out_final_base, f"{country_name}_Non_Civic_Related.csv"))
 
     # Write by-source normalized (divide every numeric column except year/month by the SAME country-month denominator)
-    out_by_source_base = f"/home/ml4p/Dropbox/Dropbox/ML for Peace/Counts_Civic_New/By_Source/{country_name}/{today.year}_{today.month}_{today.day}/"
+    out_by_source_base = f"/home/ml4p/Dropbox/Dropbox/ML for Peace/Counts_Civic_New/Normalized_By_Source/{country_name}/{today.year}_{today.month}_{today.day}/"
     for sub in ["Combined", "Civic_Related", "Non_Civic_Related"]:
         Path(os.path.join(out_by_source_base, sub)).mkdir(parents=True, exist_ok=True)
 
@@ -616,7 +618,9 @@ if __name__ == '__main__':
     # Edit this to run a batch
     countries_needed = [
         # 'ARM','BLR','KGZ','MKD','MDA','SRB','SLV','DOM','NIC','PRY','KHM','LKA','LBR','ZMB','ZWE','ECU','ALB','MEX','PHL','UZB','AGO','XKX','MKD','BFA','CMR'
-        'AZE','GEO','HUN','UKR'
+        # 'AZE','GEO','HUN','UKR'
+        'IND','IDN','HUN','AZE','CRI','ECU','ETH','BGD','COL','DZA','SRB'
+        
         ]
     countries = [(n,c) for (n,c) in all_countries if c in countries_needed]
 
