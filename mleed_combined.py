@@ -447,7 +447,8 @@ if __name__ == "__main__":
 
     # Specify base codes to process (no ENV_ codes needed)
     countries_needed = [
-        'IND','IDN','HUN','AZE','CRI','ECU','ETH','BGD','COL','DZA','SRB'
+        # 'IND','IDN','HUN','AZE','CRI','ECU','ETH','BGD','COL','DZA','SRB'
+        'GTM','HND','SLV'
 
     ]  # <-- edit this list as needed
     countries = [(name, code) for (name, code) in all_countries if code in countries_needed]
