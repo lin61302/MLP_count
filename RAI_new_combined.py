@@ -561,7 +561,9 @@ if __name__ == "__main__":
     countries_needed = [
         # 'ARM','BLR','KGZ','MKD','MDA','SRB','SLV','DOM','NIC','PRY','KHM','LKA','LBR','ZMB','ZWE','ECU','ALB','MEX','PHL','UZB','AGO','XKX','MKD','BFA','CMR'
         # 'IND','IDN','HUN','AZE','CRI','ECU','ETH','BGD','COL','DZA'
-        'IND','IDN','HUN','AZE','CRI','ECU','ETH','BGD','COL','DZA','SRB'
+        # 'IND','IDN','HUN','AZE','CRI','ECU','ETH','BGD','COL','DZA','SRB'
+        'ALB', 'BEN', 'COL', 'ECU', 'ETH', 'GEO', 'KEN', 'PRY', 'MLI', 'MAR', 'NGA', 'SRB', 'SEN', 'TZA', 'UGA', 'UKR', 'ZWE', 'MRT', 'ZMB', 'XKX', 'NER', 'JAM', 'HND', 'PHL', 'GHA', 'RWA', 'GTM', 'BLR', 'KHM', 'COD', 'TUR', 'BGD', 'SLV', 'ZAF', 'TUN', 'IDN', 'NIC', 'AGO', 'ARM', 'LKA', 'MYS', 'CMR', 'HUN', 'MWI', 'UZB', 'IND', 'MOZ', 'AZE', 'KGZ', 'MDA', 'KAZ', 'PER', 'DZA', 'MKD', 'SSD', 'LBR', 'PAK', 'NPL', 'NAM', 'BFA', 'DOM', 'TLS', 'SLB', 'CRI', 'PAN'
+        
         ]
     countries = [(name, code) for (name, code) in all_countries if code in countries_needed]
 
