@@ -287,7 +287,8 @@ if __name__ == "__main__":
         # 'ARM','BLR','KGZ','MKD','MDA','SRB','SLV','DOM','NIC','PRY','KHM','LKA','LBR','ZMB','ZWE','ECU','ALB','MEX','PHL','UZB','AGO','XKX','MKD','BFA','CMR'
         # 'AZE','GEO','HUN','UKR'
         # 'IND','IDN','HUN','AZE','CRI','ECU','ETH','BGD','COL','DZA','SRB'
-        'KAZ','MWI','MRT','JAM','NAM','NGA','MYS'
+        # 'KAZ','MWI','MRT','JAM','NAM','NGA','MYS'
+        'KAZ','MWI','MRT','JAM','NAM','NGA','MYS','MAR','NPL','NER','PAK','MEX'
         
     ]
     all_countries = [
@@ -307,7 +308,7 @@ if __name__ == "__main__":
         ('Algeria','DZA'), ('Macedonia','MKD'), ('South Sudan','SSD'), ('Liberia','LBR'),
         ('Pakistan','PAK'), ('Nepal','NPL'), ('Namibia','NAM'), ('Burkina Faso','BFA'),
         ('Dominican Republic','DOM'), ('Timor Leste','TLS'), ('Solomon Islands','SLB'),
-        ("Costa Rica",'CRI'), ('Panama','PAN'),
+        ("Costa Rica",'CRI'), ('Panama','PAN'),('Mexico','MEX')
     ]
 
     countries = [(name, code) for (name, code) in all_countries if code in countries_needed]
