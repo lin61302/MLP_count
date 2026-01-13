@@ -288,7 +288,8 @@ if __name__ == "__main__":
         # 'AZE','GEO','HUN','UKR'
         # 'IND','IDN','HUN','AZE','CRI','ECU','ETH','BGD','COL','DZA','SRB'
         # 'KAZ','MWI','MRT','JAM','NAM','NGA','MYS'
-        'KAZ','MWI','MRT','JAM','NAM','NGA','MYS','MAR','NPL','NER','PAK','MEX'
+        # 'KAZ','MWI','MRT','JAM','NAM','NGA','MYS','MAR','NPL','NER','PAK','MEX
+         'LBR','ZWE','ARM','ZMB','BLR','SLV'
         
     ]
     all_countries = [
