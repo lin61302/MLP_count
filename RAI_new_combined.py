@@ -24,7 +24,7 @@ from tqdm import tqdm
 from p_tqdm import p_umap
 import time
 from dotenv import load_dotenv
-from pymongo import MongoClient
+from pymongo import MongoClient, UpdateOne
 import multiprocessing
 import dateparser
 import subprocess
@@ -124,7 +124,8 @@ def _project_base():
         '_id': 1, 'RAI_new': 1, 'date_publish': 1,
         'title_translated': 1, 'maintext_translated': 1,
         'language': 1, 'cliff_locations': 1, 'en_cliff_locations': 1,
-        'RAI_is_china_related': 1, 'RAI_is_russia_related': 1
+        'RAI_is_china_related': 1, 'RAI_is_russia_related': 1,
+        'event_type_RAI_new': 1, 'event_type_RAI_new_China': 1, 'event_type_RAI_new_Russia': 1
     }
 
 def _safe_colname(doc):
@@ -202,6 +203,47 @@ def _count_events(docs, chosen_event_types, country_code, scope):
         counts[et] = cnt
     return counts
 
+def _update_event_type_fields(dbl, colname, docs, e_cb, e_ch, e_ru):
+    """
+    Persist per-doc event types so DB fields mirror the counting inclusion logic.
+    """
+    ops = []
+    for i, d in enumerate(docs):
+        # Skip unchanged rows to reduce write load on recurring runs.
+        if (
+            d.get('event_type_RAI_new') == e_cb[i] and
+            d.get('event_type_RAI_new_China') == e_ch[i] and
+            d.get('event_type_RAI_new_Russia') == e_ru[i]
+        ):
+            continue
+        ops.append(
+            UpdateOne(
+                {'_id': d['_id']},
+                {'$set': {
+                    'event_type_RAI_new': e_cb[i],
+                    'event_type_RAI_new_China': e_ch[i],
+                    'event_type_RAI_new_Russia': e_ru[i],
+                }}
+            )
+        )
+    if ops:
+        try:
+            dbl[colname].bulk_write(ops, ordered=False)
+        except Exception:
+            # Fallback to individual writes if a bulk op fails.
+            for i, d in enumerate(docs):
+                try:
+                    dbl[colname].update_one(
+                        {'_id': d['_id']},
+                        {'$set': {
+                            'event_type_RAI_new': e_cb[i],
+                            'event_type_RAI_new_China': e_ch[i],
+                            'event_type_RAI_new_Russia': e_ru[i],
+                        }}
+                    )
+                except Exception:
+                    pass
+
 def _write_raw_csv(df, country_name, domain, bucket):
     base = f"/home/ml4p/Dropbox/Dropbox/ML for Peace/Counts_RAI_New/Raw_By_Source/{country_name}/{today.year}_{today.month}_{today.day}/{bucket}/"
     Path(base).mkdir(parents=True, exist_ok=True)
@@ -246,7 +288,6 @@ def count_domain_loc(uri, domain, country_name, country_code):
         if not docs:
             continue
 
-        N = len(docs)
         e_ch, e_ru, e_cb = [], [], []
 
         for i, d in enumerate(docs):
@@ -262,6 +303,22 @@ def count_domain_loc(uri, domain, country_name, country_code):
             e_ch.append(et if is_ch else '-999')
             e_ru.append(et if is_ru else '-999')
             e_cb.append(et if is_cb else '-999')
+
+        # Event-type fields should reflect count eligibility by bucket.
+        u_ch, u_ru, u_cb = e_ch.copy(), e_ru.copy(), e_cb.copy()
+        if country_code == 'GEO':
+            for i, d in enumerate(docs):
+                try:
+                    keep_geo = check_georgia_text(d.get('maintext_translated', ''), 'loc') and \
+                               check_georgia_text(d.get('title_translated', ''), 'loc')
+                except Exception:
+                    keep_geo = True
+                if not keep_geo:
+                    u_ch[i] = '-999'
+                    u_ru[i] = '-999'
+                    u_cb[i] = '-999'
+
+        _update_event_type_fields(dbl, colname, docs, u_cb, u_ch, u_ru)
 
         # Country_Georgia tagging mirror (side-effect)
         if country_code == 'GEO':
@@ -327,7 +384,6 @@ def count_domain_int(uri, domain, country_name, country_code):
         if not docs:
             continue
 
-        N = len(docs)
         e_ch, e_ru, e_cb = [], [], []
 
         for i, d in enumerate(docs):
@@ -341,6 +397,22 @@ def count_domain_int(uri, domain, country_name, country_code):
             e_ch.append(et if is_ch else '-999')
             e_ru.append(et if is_ru else '-999')
             e_cb.append(et if is_cb else '-999')
+
+        # Event-type fields should reflect count eligibility by bucket.
+        u_ch, u_ru, u_cb = e_ch.copy(), e_ru.copy(), e_cb.copy()
+        if country_code == 'GEO':
+            for i, d in enumerate(docs):
+                try:
+                    keep_geo = check_georgia_text(d.get('maintext_translated', ''), 'int') and \
+                               check_georgia_text(d.get('title_translated', ''), 'int')
+                except Exception:
+                    keep_geo = True
+                if not keep_geo:
+                    u_ch[i] = '-999'
+                    u_ru[i] = '-999'
+                    u_cb[i] = '-999'
+
+        _update_event_type_fields(dbl, colname, docs, u_cb, u_ch, u_ru)
 
         if country_code == 'GEO':
             try:
@@ -567,9 +639,11 @@ if __name__ == "__main__":
         # 'KAZ','MWI','MRT','JAM','NAM','NGA','MYS'
         # 'KAZ','MWI','MRT','JAM','NAM','NGA','MYS','MAR','NPL','NER','PAK'
         #  'LBR','ZWE','ARM','ZMB','BLR','SLV'
-        'PRY','DOM','ECU','LKA','SRB','NIC','KHM','MDA'
-        ]
-    countries = [(name, code) for (name, code) in all_countries if code in countries_needed]
+        "KGZ", "PAN", "PER", "MKD", "KEN"
+    ]
+
+    # Empty countries_needed => run all countries.
+    countries = [(name, code) for (name, code) in all_countries if code in countries_needed] if countries_needed else all_countries
 
     for country_name, country_code in countries:
         print('Starting:', country_name)
