@@ -870,7 +870,8 @@ if __name__ == "__main__":
         #     'TUR', 'BGD', 'SLV', 'ZAF', 'TUN', 'IDN', 'NIC', 'AGO', 'ARM', 'LKA', 'MYS', 'CMR', 'HUN', 'MWI', 'UZB',
         #     'IND', 'MOZ', 'AZE', 'KGZ', 'MDA', 'KAZ', 'PER', 'DZA', 'MKD', 'SSD', 'LBR', 'PAK', 'NPL', 'NAM', 'BFA',
         #     'DOM', 'TLS', 'SLB', 'CRI', 'PAN','MEX'
-       "KGZ", "PAN", "PER", "MKD", "KEN"
+    #    "KGZ", "PAN", "PER", "MKD", "KEN"
+    "MEX", "SEN", "TUN", "SLB", "TLS","TZA"
     ]
 
     all_countries = [
