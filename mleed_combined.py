@@ -454,7 +454,7 @@ if __name__ == "__main__":
         # 'KAZ','MWI','MRT','JAM','NAM','NGA','MYS'
         # 'KAZ','MWI','MRT','JAM','NAM','NGA','MYS','MAR','NPL','NER','PAK'
         #  'LBR','ZWE','ARM','ZMB','BLR','SLV'
-       "KGZ", "PAN", "PER", "MKD", "KEN"
+       "MEX", "SEN", "TUN", "SLB", "TLS","TZA"
 
     ]  # <-- edit this list as needed
     countries = [(name, code) for (name, code) in all_countries if code in countries_needed]
