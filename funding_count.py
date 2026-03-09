@@ -9,6 +9,7 @@
 # from pymongo import MongoClient
 # import dateparser
 # import subprocess
+import shutil
 
 # # ------------------- Setup -------------------
 # load_dotenv()
@@ -390,6 +391,10 @@ TODAY = pd.Timestamp.now()
 OUT_ROOT = "/home/ml4p/Dropbox/Dropbox/ML for Peace/Counts_USG_Funding"
 DATE_STAMP = f"{TODAY.year}_{TODAY.month}_{TODAY.day}"
 
+# Toggle this to include or skip major international/regional sources.
+# When False, both numerators and denominators are computed from local sources only.
+INCLUDE_INTL_REGIONAL_SOURCES = False
+
 print("Run date:", TODAY)
 
 # ------------------- Columns: Event x Sentiment -------------------
@@ -500,6 +505,13 @@ def _sum_denoms(frames):
 
     out = out[['date', 'year', 'month', 'denom_total_local']]
     return out
+
+def _reset_country_output_dirs(country_name):
+    """Remove today's output folders for one country so reruns do not leave stale files behind."""
+    for folder_name in ('Raw_By_Source', 'Normalized_By_Source', 'Final_Aggregated'):
+        out_dir = Path(OUT_ROOT) / folder_name / country_name / DATE_STAMP
+        if out_dir.exists():
+            shutil.rmtree(out_dir)
 
 # ------------------- Counting: Local (UNCHANGED counting logic) -------------------
 def count_domain_loc_funding(uri, domain, country_name, country_code):
@@ -763,7 +775,7 @@ def denom_domain_int_all(uri, domain, country_name, country_code):
     return df
 
 # ------------------- Country orchestrator -------------------
-def process_country(uri, country_name, country_code, num_cpus=10):
+def process_country(uri, country_name, country_code, num_cpus=10, include_intl_regional=INCLUDE_INTL_REGIONAL_SOURCES):
     dbm = MongoClient(uri).ml4p
 
     # Source sets (same basic grouping as your funding script)
@@ -771,12 +783,16 @@ def process_country(uri, country_name, country_code, num_cpus=10):
         {'primary_location': {'$in': [country_code]}, 'include': True}
     )]
 
-    int_sources = [d['source_domain'] for d in dbm['sources'].find(
-        {'major_international': True, 'include': True}
-    )]
-    regional_sources = [d['source_domain'] for d in dbm['sources'].find(
-        {'major_regional': True, 'include': True}
-    )]
+    if include_intl_regional:
+        int_sources = [d['source_domain'] for d in dbm['sources'].find(
+            {'major_international': True, 'include': True}
+        )]
+        regional_sources = [d['source_domain'] for d in dbm['sources'].find(
+            {'major_regional': True, 'include': True}
+        )]
+    else:
+        int_sources = []
+        regional_sources = []
 
     # De-dup
     local_sources = sorted(set(local_sources))
@@ -787,7 +803,12 @@ def process_country(uri, country_name, country_code, num_cpus=10):
     int_sources = [d for d in int_sources if d not in local_sources]
     regional_sources = [d for d in regional_sources if (d not in local_sources and d not in int_sources)]
 
-    print(f"[{country_code}] Local={len(local_sources)} | INT={len(int_sources)} | REG={len(regional_sources)}")
+    _reset_country_output_dirs(country_name)
+
+    print(
+        f"[{country_code}] include_intl_regional={include_intl_regional} | "
+        f"Local={len(local_sources)} | INT={len(int_sources)} | REG={len(regional_sources)}"
+    )
 
     # ---- Run per-domain funding counters (RAW) ----
     loc_args = [(uri, d, country_name, country_code) for d in local_sources]
@@ -865,13 +886,12 @@ if __name__ == "__main__":
         time.sleep(t)
 
     countries_needed = [
-        # 'ALB', 'BEN', 'COL', 'ECU', 'ETH', 'GEO', 'KEN', 'PRY', 'MLI', 'MAR', 'NGA', 'SRB', 'SEN', 'TZA', 'UGA',
-        #     'UKR', 'ZWE', 'MRT', 'ZMB', 'XKX', 'NER', 'JAM', 'HND', 'PHL', 'GHA', 'RWA', 'GTM', 'BLR', 'KHM', 'COD',
-        #     'TUR', 'BGD', 'SLV', 'ZAF', 'TUN', 'IDN', 'NIC', 'AGO', 'ARM', 'LKA', 'MYS', 'CMR', 'HUN', 'MWI', 'UZB',
-        #     'IND', 'MOZ', 'AZE', 'KGZ', 'MDA', 'KAZ', 'PER', 'DZA', 'MKD', 'SSD', 'LBR', 'PAK', 'NPL', 'NAM', 'BFA',
-        #     'DOM', 'TLS', 'SLB', 'CRI', 'PAN','MEX'
+        'ALB', 'BEN', 'COL', 'ECU', 'ETH', 'GEO', 'KEN', 'PRY', 'MLI', 'MAR', 'NGA', 'SRB', 'SEN', 'TZA', 'UGA',
+            'UKR', 'ZWE', 'MRT', 'ZMB', 'XKX', 'NER', 'JAM', 'HND', 'PHL', 'GHA', 'RWA', 'GTM', 'BLR', 'KHM', 'COD',
+            'TUR', 'BGD', 'SLV', 'ZAF', 'TUN', 'IDN', 'NIC', 'AGO', 'ARM', 'LKA', 'MYS', 'CMR', 'HUN', 'MWI', 'UZB',
+            'IND', 'MOZ', 'AZE', 'KGZ', 'MDA', 'KAZ', 'PER', 'DZA', 'MKD', 'SSD', 'LBR', 'PAK', 'NPL', 'NAM', 'BFA',
+            'DOM', 'TLS', 'SLB', 'CRI', 'PAN','MEX'
     #    "KGZ", "PAN", "PER", "MKD", "KEN"
-    "MEX", "SEN", "TUN", "SLB", "TLS","TZA"
     ]
 
     all_countries = [
@@ -898,7 +918,13 @@ if __name__ == "__main__":
 
     for (country_name, country_code) in countries:
         print('Starting:', country_name)
-        process_country(URI, country_name, country_code, num_cpus=10)
+        process_country(
+            URI,
+            country_name,
+            country_code,
+            num_cpus=10,
+            include_intl_regional=INCLUDE_INTL_REGIONAL_SOURCES,
+        )
 
         commit_message = f"USG funding counts (raw/by-source norm/final) ({country_code})"
         run_git_commands(commit_message)
