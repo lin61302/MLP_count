@@ -893,7 +893,8 @@ if __name__ == "__main__":
         #     'DOM', 'TLS', 'SLB', 'CRI', 'PAN','MEX'
     #    "KGZ", "PAN", "PER", "MKD", "KEN"
     # "ZAF", "COD", "UGA", "GHA"
-    "MLI","AGO",'GTM','NGA','MOZ','SSD'
+    # "MLI","AGO",'GTM','NGA','MOZ','SSD'
+    'KHM', 'BLR', 'LKA', 'RWA', 'ZAF', 'KAZ', 'BLR'
     ]
 
     all_countries = [
