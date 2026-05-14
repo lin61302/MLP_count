@@ -483,7 +483,8 @@ if __name__ == "__main__":
 #  'BFA',
 #  'BEN',
 #  "MLI","AGO",'GTM','NGA','MOZ','SSD','UKR','GEO','UZB','XKX','PHL','MWI','NER'
- 'KHM', 'BLR', 'LKA', 'RWA', 'ZAF', 'KAZ', 'NGA'
+#  'KHM', 'BLR', 'LKA', 'RWA', 'ZAF', 'KAZ', 'NGA'
+"MWI","XKX","BFA","GEO","BEN","TUR","COL","CMR","BGD", "NGA", "MAR", "TLS", "DZA", "SLB", "AZE", "HUN", "PHL"
 
     ]  # <-- edit this list as needed
     countries = [(name, code) for (name, code) in all_countries if code in countries_needed]
