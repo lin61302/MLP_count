@@ -781,7 +781,7 @@ def process_country(uri, country_name, country_code, num_cpus=10, include_intl_r
     # Source sets (same basic grouping as your funding script)
     local_sources = [d['source_domain'] for d in dbm['sources'].find(
         {'primary_location': {'$in': [country_code]}, 'include': True}
-    )]
+    )] #+ ['balkaninsight.com', 'iwpr.net']
 
     if include_intl_regional:
         int_sources = [d['source_domain'] for d in dbm['sources'].find(
@@ -895,7 +895,8 @@ if __name__ == "__main__":
     # "ZAF", "COD", "UGA", "GHA"
     # "MLI","AGO",'GTM','NGA','MOZ','SSD'
     # 'KHM', 'BLR', 'LKA', 'RWA', 'ZAF', 'KAZ', 'BLR'
-    "MWI","XKX","BFA","GEO","BEN","TUR","COL","CMR","BGD"
+    # "MWI","XKX","BFA","GEO","BEN","TUR","COL","CMR","BGD"
+    "UKR", "SRB", "MDA", "MKD", "XKX", "GEO", "BLR", "AZE", "ARM", "ALB"
     ]
 
     all_countries = [
