@@ -326,7 +326,7 @@ def process_country(uri, country_name, country_code, num_cpus=10):
         {'$or': [{'major_international': True}, {'major_regional': True}], 'include': True},
         projection={'source_domain': 1})]
     int_sources += [doc['source_domain'] for doc in db_mongo['sources'].find(
-        {'primary_location': {'$in': ["ENV_INT", "ENV_REG"]}, 'include': True},
+        {'primary_location': {'$in': ["ENV_INT"]}, 'include': True},
         projection={'source_domain': 1})]
 
     # Deduplicate and avoid overlaps
