@@ -325,6 +325,9 @@ def process_country(uri, country_name, country_code, num_cpus=10):
     int_sources = [doc['source_domain'] for doc in db_mongo['sources'].find(
         {'$or': [{'major_international': True}, {'major_regional': True}], 'include': True},
         projection={'source_domain': 1})]
+    int_sources += [doc['source_domain'] for doc in db_mongo['sources'].find(
+        {'primary_location': {'$in': ["ENV_INT", "ENV_REG"]}, 'include': True},
+        projection={'source_domain': 1})]
 
     # Deduplicate and avoid overlaps
     local_sources = sorted(set(local_sources))
@@ -484,7 +487,8 @@ if __name__ == "__main__":
 #  'BEN',
 #  "MLI","AGO",'GTM','NGA','MOZ','SSD','UKR','GEO','UZB','XKX','PHL','MWI','NER'
 #  'KHM', 'BLR', 'LKA', 'RWA', 'ZAF', 'KAZ', 'NGA'
-"PHL", "AZE", "JAM", "UKR", "IND", "HUN", "CRI", "UZB", "MRT", "ETH", "MYS", "NAM"
+# "PHL", "AZE", "JAM", "UKR", "IND", "HUN", "CRI", "UZB", "MRT", "ETH", "MYS", "NAM"
+"MAR", "KAZ", "NPL", "PAK", "MYS", "MEX", "ZMB", "SRB", "ARM", "NER", "MDA"
 
     ]  # <-- edit this list as needed
     countries = [(name, code) for (name, code) in all_countries if code in countries_needed]

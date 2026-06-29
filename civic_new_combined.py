@@ -628,7 +628,8 @@ if __name__ == '__main__':
         # "ZAF", "COD", "UGA", "GHA"
         # "MLI","AGO",'GTM','NGA','MOZ','SSD'
         # 'KHM', 'BLR', 'LKA', 'RWA', 'ZAF', 'KAZ', 'BLR'
-        "PHL", "AZE", "JAM", "UKR", "IND", "HUN", "CRI", "UZB", "MRT", "ETH", "MYS", "NAM"
+        # "PHL", "AZE", "JAM", "UKR", "IND", "HUN", "CRI", "UZB", "MRT", "ETH", "MYS", "NAM"
+         "MAR", "KAZ", "NPL", "PAK", "MYS", "MEX", "ZMB", "SRB", "ARM", "NER", "MDA"
         ]
     countries = [(n,c) for (n,c) in all_countries if c in countries_needed]
 

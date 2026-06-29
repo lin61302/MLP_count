@@ -18,6 +18,7 @@ Outputs:
 import os
 from pathlib import Path
 import re
+import hashlib
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
@@ -75,6 +76,20 @@ title_re_russia = re.compile(r'(russia|russian)', flags=re.IGNORECASE)
 rai_re_combined   = compile_regex(pd.concat([ru, ch]), pd.concat([ru_ind, ch_ind]).tolist())
 title_re_combined = re.compile(r'(china|chinese|russia|russian)', flags=re.IGNORECASE)
 
+RAI_FLAG_VERSION = 'rai_keyword_flags_textsig_v1'
+RAI_KEYWORD_HASH = hashlib.sha1(
+    '\n'.join([str(x).strip() for x in list(ch) + list(ru)]).encode('utf-8', 'ignore')
+).hexdigest()
+
+def _flag_signature(title, main_snip):
+    payload = '\n---RAI-FLAG---\n'.join([
+        RAI_FLAG_VERSION,
+        RAI_KEYWORD_HASH,
+        title or '',
+        main_snip or '',
+    ])
+    return hashlib.sha1(payload.encode('utf-8', 'ignore')).hexdigest()
+
 # Georgia filters (boundary on every term)
 geo_int = pd.read_excel(__georgiapath_int__)
 geo_loc = pd.read_excel(__georgiapath_loc__)
@@ -125,6 +140,7 @@ def _project_base():
         'title_translated': 1, 'maintext_translated': 1,
         'language': 1, 'cliff_locations': 1, 'en_cliff_locations': 1,
         'RAI_is_china_related': 1, 'RAI_is_russia_related': 1,
+        'RAI_keyword_flag_signature': 1, 'RAI_keyword_flag_version': 1,
         'event_type_RAI_new': 1, 'event_type_RAI_new_China': 1, 'event_type_RAI_new_Russia': 1
     }
 
@@ -143,27 +159,31 @@ def _doc_passes(pattern_re, title_re, title, main2k):
 
 def _get_or_update_flags(dbl, doc, title, main_snip):
     """
-    Return (is_china, is_russia). If flags missing, compute via regex and persist.
+    Return (is_china, is_russia). Recompute when cached flags are missing
+    or were produced from a different translated-text / keyword signature.
     """
-    need_update = False
+    current_sig = _flag_signature(title, main_snip)
     is_ch = doc.get('RAI_is_china_related', None)
     is_ru = doc.get('RAI_is_russia_related', None)
-
-    if is_ch is None:
-        is_ch = _doc_passes(rai_re_china, title_re_china, title, main_snip)
-        need_update = True
-    if is_ru is None:
-        is_ru = _doc_passes(rai_re_russia, title_re_russia, title, main_snip)
-        need_update = True
+    need_update = (
+        is_ch is None or
+        is_ru is None or
+        doc.get('RAI_keyword_flag_signature') != current_sig or
+        doc.get('RAI_keyword_flag_version') != RAI_FLAG_VERSION
+    )
 
     if need_update:
+        is_ch = _doc_passes(rai_re_china, title_re_china, title, main_snip)
+        is_ru = _doc_passes(rai_re_russia, title_re_russia, title, main_snip)
         try:
             col = _safe_colname(doc)
             dbl[col].update_one(
                 {'_id': doc['_id']},
                 {'$set': {
                     'RAI_is_china_related': bool(is_ch),
-                    'RAI_is_russia_related': bool(is_ru)
+                    'RAI_is_russia_related': bool(is_ru),
+                    'RAI_keyword_flag_signature': current_sig,
+                    'RAI_keyword_flag_version': RAI_FLAG_VERSION
                 }}
             )
         except Exception:
@@ -643,7 +663,8 @@ if __name__ == "__main__":
     # "ZAF", "COD", "UGA", "GHA"
     # "MLI","AGO",'GTM','NGA','MOZ','SSD'
     # 'KHM', 'BLR', 'LKA', 'RWA', 'ZAF', 'KAZ', 'BLR'
-    "PHL", "AZE", "JAM", "UKR", "IND", "HUN", "CRI", "UZB", "MRT", "ETH", "MYS", "NAM"
+    # "PHL", "AZE", "JAM", "UKR", "IND", "HUN", "CRI", "UZB", "MRT", "ETH", "MYS", "NAM"
+    "MAR", "KAZ", "NPL", "PAK", "MYS", "MEX", "ZMB", "SRB", "ARM", "NER", "MDA"
     ]
 
     # Empty countries_needed => run all countries.
