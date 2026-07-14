@@ -664,7 +664,8 @@ if __name__ == "__main__":
     # "MLI","AGO",'GTM','NGA','MOZ','SSD'
     # 'KHM', 'BLR', 'LKA', 'RWA', 'ZAF', 'KAZ', 'BLR'
     # "PHL", "AZE", "JAM", "UKR", "IND", "HUN", "CRI", "UZB", "MRT", "ETH", "MYS", "NAM"
-    "MAR", "KAZ", "NPL", "PAK", "MYS", "MEX", "ZMB", "SRB", "ARM", "NER", "MDA"
+    # "MAR", "KAZ", "NPL", "PAK", "MYS", "MEX", "ZMB", "SRB", "ARM", "NER", "MDA"
+    "DZA"
     ]
 
     # Empty countries_needed => run all countries.
