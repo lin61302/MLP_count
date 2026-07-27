@@ -374,7 +374,7 @@ from pathlib import Path
 import re
 import numpy as np
 import pandas as pd
-from p_tqdm import p_umap
+from p_tqdm import p_map
 import time
 from dotenv import load_dotenv
 from pymongo import MongoClient
@@ -508,7 +508,7 @@ def _sum_denoms(frames):
 
 def _reset_country_output_dirs(country_name):
     """Remove today's output folders for one country so reruns do not leave stale files behind."""
-    for folder_name in ('Raw_By_Source', 'Normalized_By_Source', 'Final_Aggregated'):
+    for folder_name in ('Raw_By_Source', 'Normalized_By_Source', 'Final_Aggregated', 'Source_Roles'):
         out_dir = Path(OUT_ROOT) / folder_name / country_name / DATE_STAMP
         if out_dir.exists():
             shutil.rmtree(out_dir)
@@ -778,31 +778,38 @@ def denom_domain_int_all(uri, domain, country_name, country_code):
 def process_country(uri, country_name, country_code, num_cpus=10, include_intl_regional=INCLUDE_INTL_REGIONAL_SOURCES):
     dbm = MongoClient(uri).ml4p
 
-    # Source sets (same basic grouping as your funding script)
-    local_sources = [d['source_domain'] for d in dbm['sources'].find(
+    # Preserve funding's local-only default. When international/regional
+    # sources are enabled, resolve conflicts as international > regional >
+    # local. Explicit country overrides are applied first in either mode.
+    local_candidates = {d['source_domain'] for d in dbm['sources'].find(
         {'primary_location': {'$in': [country_code]}, 'include': True}
-    )] 
+    )}
+    forced_local = {'balkaninsight.com'} if country_code == 'XKX' else set()
 
     if include_intl_regional:
-        int_sources = [d['source_domain'] for d in dbm['sources'].find(
+        international_candidates = {d['source_domain'] for d in dbm['sources'].find(
             {'major_international': True, 'include': True}
-        )]
-        regional_sources = [d['source_domain'] for d in dbm['sources'].find(
+        )}
+        regional_candidates = {d['source_domain'] for d in dbm['sources'].find(
             {'major_regional': True, 'include': True}
-        )]
-        # int_sources = ['balkaninsight.com', 'iwpr.net']
+        )}
+
+        international_set = international_candidates - forced_local
+        regional_set = regional_candidates - international_set - forced_local
+        local_set = (local_candidates - international_set - regional_set) | forced_local
     else:
-        int_sources = []
-        regional_sources = []
+        # No cross-role conflict exists in local-only mode, so retain the
+        # funding script's established local source universe.
+        local_set = local_candidates | forced_local
+        international_set = set()
+        regional_set = set()
 
-    # De-dup
-    local_sources = sorted(set(local_sources))
-    int_sources = sorted(set(int_sources))
-    regional_sources = sorted(set(regional_sources))
+    local_sources = sorted(local_set)
+    int_sources = sorted(international_set)
+    regional_sources = sorted(regional_set)
 
-    # (Optional) avoid overlap between sets to prevent double counting
-    int_sources = [d for d in int_sources if d not in local_sources]
-    regional_sources = [d for d in regional_sources if (d not in local_sources and d not in int_sources)]
+    if (local_set & international_set) or (local_set & regional_set) or (international_set & regional_set):
+        raise RuntimeError(f"[{country_code}] source role resolution produced overlapping sets")
 
     _reset_country_output_dirs(country_name)
 
@@ -816,23 +823,43 @@ def process_country(uri, country_name, country_code, num_cpus=10, include_intl_r
     int_args = [(uri, d, country_name, country_code) for d in int_sources]
     reg_args = [(uri, d, country_name, country_code) for d in regional_sources]
 
-    loc_results = p_umap(lambda a: count_domain_loc_funding(*a), loc_args, num_cpus=num_cpus) if loc_args else []
-    int_results = p_umap(lambda a: count_domain_int_funding(*a), int_args, num_cpus=num_cpus) if int_args else []
-    reg_results = p_umap(lambda a: count_domain_int_funding(*a), reg_args, num_cpus=num_cpus) if reg_args else []
+    # Carry the domain inside every worker result. p_map is ordered, but the
+    # explicit tag also prevents future parallel-map changes from relabeling
+    # results by position.
+    loc_results = p_map(
+        lambda a: (a[1], count_domain_loc_funding(*a)), loc_args, num_cpus=num_cpus
+    ) if loc_args else []
+    int_results = p_map(
+        lambda a: (a[1], count_domain_int_funding(*a)), int_args, num_cpus=num_cpus
+    ) if int_args else []
+    reg_results = p_map(
+        lambda a: (a[1], count_domain_int_funding(*a)), reg_args, num_cpus=num_cpus
+    ) if reg_args else []
+
+    if not (
+        len(loc_results) == len(local_sources)
+        and len(int_results) == len(int_sources)
+        and len(reg_results) == len(regional_sources)
+    ):
+        raise RuntimeError(f"[{country_code}] parallel result count does not match source count")
 
     # Map domain -> df
     domain_to_df = {}
-    for d, df in zip(local_sources, loc_results):
+    for d, df in loc_results:
         domain_to_df[d] = df
-    for d, df in zip(int_sources, int_results):
+    for d, df in int_results:
         domain_to_df[d] = df
-    for d, df in zip(regional_sources, reg_results):
+    for d, df in reg_results:
         domain_to_df[d] = df
 
+    expected_domains = local_set | international_set | regional_set
+    if set(domain_to_df) != expected_domains:
+        raise RuntimeError(f"[{country_code}] source results do not match assigned domains")
+
     # ---- Denominators per domain (ALL local articles, no funding filters) ----
-    denom_loc = p_umap(lambda a: denom_domain_loc_all(*a), loc_args, num_cpus=num_cpus) if loc_args else []
-    denom_int = p_umap(lambda a: denom_domain_int_all(*a), int_args, num_cpus=num_cpus) if int_args else []
-    denom_reg = p_umap(lambda a: denom_domain_int_all(*a), reg_args, num_cpus=num_cpus) if reg_args else []
+    denom_loc = p_map(lambda a: denom_domain_loc_all(*a), loc_args, num_cpus=num_cpus) if loc_args else []
+    denom_int = p_map(lambda a: denom_domain_int_all(*a), int_args, num_cpus=num_cpus) if int_args else []
+    denom_reg = p_map(lambda a: denom_domain_int_all(*a), reg_args, num_cpus=num_cpus) if reg_args else []
 
     country_denom_df = _sum_denoms(denom_loc + denom_int + denom_reg)
     denom_series = country_denom_df['denom_total_local'].astype('float64')
@@ -848,6 +875,16 @@ def process_country(uri, country_name, country_code, num_cpus=10, include_intl_r
 
     out_final = os.path.join(OUT_ROOT, "Final_Aggregated", country_name, DATE_STAMP)
     Path(out_final).mkdir(parents=True, exist_ok=True)
+    source_roles = (
+        [{'source_domain': d, 'assigned_role': 'local', 'forced_override': d in forced_local, 'location_rule': 'all_source_articles'} for d in local_sources]
+        + [{'source_domain': d, 'assigned_role': 'international', 'forced_override': False, 'location_rule': 'strict'} for d in int_sources]
+        + [{'source_domain': d, 'assigned_role': 'regional', 'forced_override': False, 'location_rule': 'strict'} for d in regional_sources]
+    )
+    source_roles_dir = os.path.join(OUT_ROOT, "Source_Roles", country_name, DATE_STAMP)
+    Path(source_roles_dir).mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(source_roles, columns=['source_domain', 'assigned_role', 'forced_override', 'location_rule']).sort_values('source_domain').to_csv(
+        os.path.join(source_roles_dir, f"{country_name}_Source_Roles.csv"), index=False
+    )
     country_raw.sort_index().to_csv(os.path.join(out_final, f"{country_name}_USG_Funding.csv"))
 
     # ---- Normalized by source (divide each numeric col except year/month by SAME country denom) ----

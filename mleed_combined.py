@@ -4,11 +4,12 @@ import re
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from p_tqdm import p_umap
+from p_tqdm import p_map
 import time
 from dotenv import load_dotenv
 from pymongo import MongoClient
 import subprocess
+import shutil
 
 # -----------------------------
 # Setup
@@ -82,6 +83,15 @@ def sum_dfs(dfs):
     out['year'] = out.index.year
     out['month'] = out.index.month
     return out
+
+def _reset_country_output_dirs(country_name):
+    """Clear only today's country outputs so a rerun cannot leave stale source files."""
+    root = Path("/home/ml4p/Dropbox/Dropbox/ML for Peace/Counts_Env")
+    date_stamp = f"{today.year}_{today.month}_{today.day}"
+    for folder_name in ("Raw_By_Source", "Normalized_By_Source", "Final_Aggregated", "Source_Roles"):
+        out_dir = root / folder_name / country_name / date_stamp
+        if out_dir.exists():
+            shutil.rmtree(out_dir)
 
 # common projection for Mongo queries
 projection_common = {
@@ -314,42 +324,74 @@ def process_country(uri, country_name, country_code, num_cpus=10):
     """
     db_mongo = MongoClient(uri).ml4p
 
-    # 1) Gather sources
+    # 1) Gather sources. Explicit country overrides are applied first; all
+    # remaining role conflicts use international > regional > local.
     env_code = f'ENV_{country_code}'
-    local_sources = [doc['source_domain'] for doc in db_mongo['sources'].find(
+    local_candidates = {doc['source_domain'] for doc in db_mongo['sources'].find(
         {'primary_location': {'$in': [country_code]}, 'include': True},
-        projection={'source_domain': 1})]
-    env_local_sources = [doc['source_domain'] for doc in db_mongo['sources'].find(
+        projection={'source_domain': 1})}
+    env_local_candidates = {doc['source_domain'] for doc in db_mongo['sources'].find(
         {'primary_location': {'$in': [env_code]}, 'include': True},
-        projection={'source_domain': 1})]
-    int_sources = [doc['source_domain'] for doc in db_mongo['sources'].find(
-        {'$or': [{'major_international': True}, {'major_regional': True}], 'include': True},
-        projection={'source_domain': 1})]
-    int_sources += [doc['source_domain'] for doc in db_mongo['sources'].find(
+        projection={'source_domain': 1})}
+    international_candidates = {doc['source_domain'] for doc in db_mongo['sources'].find(
+        {'major_international': True, 'include': True},
+        projection={'source_domain': 1})}
+    regional_candidates = {doc['source_domain'] for doc in db_mongo['sources'].find(
+        {'major_regional': True, 'include': True},
+        projection={'source_domain': 1})}
+    env_international_candidates = {doc['source_domain'] for doc in db_mongo['sources'].find(
         {'primary_location': {'$in': ["ENV_INT"]}, 'include': True},
-        projection={'source_domain': 1})]
+        projection={'source_domain': 1})}
 
-    # Deduplicate and avoid overlaps
-    local_sources = sorted(set(local_sources))
-    env_local_sources = sorted(set(env_local_sources))
-    int_sources = sorted(set(int_sources) - set(local_sources) - set(env_local_sources))
+    forced_local = {'balkaninsight.com'} if country_code == 'XKX' else set()
+    international_set = (international_candidates | env_international_candidates) - forced_local
+    regional_set = regional_candidates - international_set - forced_local
+    strict_set = international_set | regional_set
+    local_set = (local_candidates - strict_set) | forced_local
+    env_local_set = env_local_candidates - strict_set - local_set
+
+    local_sources = sorted(local_set)
+    env_local_sources = sorted(env_local_set)
+    int_sources = sorted(strict_set)
+
+    if (local_set & env_local_set) or (local_set & strict_set) or (env_local_set & strict_set):
+        raise RuntimeError(f"[{country_code}] source role resolution produced overlapping sets")
 
     print(f"[{country_code}] Local: {len(local_sources)}, ENV_local: {len(env_local_sources)}, INT/REG: {len(int_sources)}")
+    print(
+        f"[{country_code}] Source precedence: international > regional > local "
+        f"(forced local: {sorted(forced_local) or 'none'})"
+    )
+    _reset_country_output_dirs(country_name)
 
     # 2) Count per domain in parallel
     loc_like_domains = local_sources + env_local_sources
     loc_args = [(uri, d, country_name, country_code) for d in loc_like_domains]
     int_args = [(uri, d, country_name, country_code) for d in int_sources]
 
-    dfs_loc = p_umap(count_domain_loc_env, loc_args, num_cpus=num_cpus) if loc_args else []
-    dfs_int = p_umap(count_domain_int_env, int_args, num_cpus=num_cpus) if int_args else []
+    # Carry the domain inside every worker result. p_map is ordered, but the
+    # explicit tag also prevents future parallel-map changes from relabeling
+    # results by position.
+    dfs_loc = p_map(
+        lambda a: (a[1], count_domain_loc_env(a)), loc_args, num_cpus=num_cpus
+    ) if loc_args else []
+    dfs_int = p_map(
+        lambda a: (a[1], count_domain_int_env(a)), int_args, num_cpus=num_cpus
+    ) if int_args else []
+
+    if len(dfs_loc) != len(loc_like_domains) or len(dfs_int) != len(int_sources):
+        raise RuntimeError(f"[{country_code}] parallel result count does not match source count")
 
     # Map domain -> df for later outputs
     domain_to_df = {}
-    for d, df in zip(loc_like_domains, dfs_loc):
+    for d, df in dfs_loc:
         domain_to_df[d] = df
-    for d, df in zip(int_sources, dfs_int):
+    for d, df in dfs_int:
         domain_to_df[d] = df
+
+    expected_domains = local_set | env_local_set | strict_set
+    if set(domain_to_df) != expected_domains:
+        raise RuntimeError(f"[{country_code}] source results do not match assigned domains")
 
     all_domain_dfs = list(domain_to_df.values())
 
@@ -379,6 +421,17 @@ def process_country(uri, country_name, country_code, num_cpus=10):
     # 6) Write country-level (raw + _norm) to Final_Aggregated
     out_country_dir = f'/home/ml4p/Dropbox/Dropbox/ML for Peace/Counts_Env/Final_Aggregated/{country_name}/{today.year}_{today.month}_{today.day}/'
     Path(out_country_dir).mkdir(parents=True, exist_ok=True)
+    source_roles = (
+        [{'source_domain': d, 'assigned_role': 'local', 'forced_override': d in forced_local, 'location_rule': 'lenient'} for d in local_sources]
+        + [{'source_domain': d, 'assigned_role': 'environmental_local', 'forced_override': False, 'location_rule': 'lenient'} for d in env_local_sources]
+        + [{'source_domain': d, 'assigned_role': 'international', 'forced_override': False, 'location_rule': 'strict'} for d in sorted(international_set)]
+        + [{'source_domain': d, 'assigned_role': 'regional', 'forced_override': False, 'location_rule': 'strict'} for d in sorted(regional_set)]
+    )
+    source_roles_dir = f'/home/ml4p/Dropbox/Dropbox/ML for Peace/Counts_Env/Source_Roles/{country_name}/{today.year}_{today.month}_{today.day}/'
+    Path(source_roles_dir).mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(source_roles, columns=['source_domain', 'assigned_role', 'forced_override', 'location_rule']).sort_values('source_domain').to_csv(
+        os.path.join(source_roles_dir, f"{country_name}_Source_Roles.csv"), index=False
+    )
     country_outfile = os.path.join(out_country_dir, f'{country_name}.csv')
     country_raw.sort_index().to_csv(country_outfile)
     print(f"[{country_code}] Country-level (raw + norm) written: {country_outfile}")
@@ -445,7 +498,7 @@ if __name__ == "__main__":
         ('Algeria', 'DZA'), ('Macedonia', 'MKD'), ('South Sudan', 'SSD'), ('Liberia', 'LBR'),
         ('Pakistan', 'PAK'), ('Nepal', 'NPL'), ('Namibia', 'NAM'), ('Burkina Faso', 'BFA'),
         ('Dominican Republic', 'DOM'), ('Timor Leste', 'TLS'), ('Solomon Islands', 'SLB'),
-        ('Costa Rica', 'CRI'), ('Panama', 'PAN'), ('Mexico', 'MEX')
+        ('Costa Rica', 'CRI'), ('Panama', 'PAN'), ('Mexico', 'MEX'), ('Brazil', 'BRA'), ('Egypt', 'EGY'), ('Bolivia', 'BOL')
     ]
 
     # Specify base codes to process (no ENV_ codes needed)
@@ -491,7 +544,7 @@ if __name__ == "__main__":
 # "MAR", "KAZ", "NPL", "PAK", "MYS", "MEX", "ZMB", "SRB", "ARM", "NER", "MDA",
 # "MYS",
 # "DZA"
- "BRA", "EGY", "BOL", "IDN", "BLR", "PRY", "DOM", "ECU", "NIC", "TUN", "SEN", "KGZ"
+ "BRA", "EGY", "BOL", # "IDN", "BLR", "PRY", "DOM", "ECU", "NIC", "TUN", "SEN", "KGZ"
 
     ]  # <-- edit this list as needed
     countries = [(name, code) for (name, code) in all_countries if code in countries_needed]

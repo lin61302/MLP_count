@@ -26,13 +26,14 @@ import re
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from p_tqdm import p_umap
+from p_tqdm import p_map
 import time
 from dotenv import load_dotenv
 from pymongo import MongoClient
 import multiprocessing
 import dateparser
 import subprocess
+import shutil
 
 # -----------------------------
 # Setup
@@ -492,28 +493,61 @@ def _sum_denoms(frames):
     out['month'] = out.index.month
     return out
 
+def _reset_country_output_dirs(country_name):
+    """Clear only today's country outputs so a rerun cannot leave stale source files."""
+    root = Path("/home/ml4p/Dropbox/Dropbox/ML for Peace/Counts_Civic_New")
+    date_stamp = f"{today.year}_{today.month}_{today.day}"
+    for folder_name in ("Raw_By_Source", "Normalized_By_Source", "Final_Aggregated", "Source_Roles"):
+        out_dir = root / folder_name / country_name / date_stamp
+        if out_dir.exists():
+            shutil.rmtree(out_dir)
+
 # === Country orchestrator ===
 def process_country(uri, country_name, country_code, num_cpus=10):
     dbm = MongoClient(uri).ml4p
 
-    # Source sets (no ENV_)
+    # Resolve every domain to exactly one role. Explicit country overrides are
+    # applied first; all other conflicts use international > regional > local.
+    forced_local = set()
     if country_code == 'XKX':
-        local_sources = [d['source_domain'] for d in dbm['sources'].find({'primary_location': {'$in':[country_code]}, 'include': True})] + ['balkaninsight.com']
-        int_sources   = [d['source_domain'] for d in dbm['sources'].find({'major_international': True, 'include': True})]
-        regional_src  = [d['source_domain'] for d in dbm['sources'].find({'major_regional': True, 'include': True}) if d['source_domain']!='balkaninsight.com']
-    elif country_code == 'KAZ':
-        local_sources = [d['source_domain'] for d in dbm['sources'].find({'primary_location': {'$in':[country_code]}, 'include': True})] + ['kaztag.kz']
-        int_sources   = [d['source_domain'] for d in dbm['sources'].find({'major_international': True, 'include': True})]
-        regional_src  = [d['source_domain'] for d in dbm['sources'].find({'major_regional': True, 'include': True})]
-    else:
-        local_sources = [d['source_domain'] for d in dbm['sources'].find({'primary_location': {'$in':[country_code]}, 'include': True})]
-        int_sources   = [d['source_domain'] for d in dbm['sources'].find({'major_international': True, 'include': True})]
-        regional_src  = [d['source_domain'] for d in dbm['sources'].find({'major_regional': True, 'include': True})]
+        forced_local.add('balkaninsight.com')
 
-    # Dedup and avoid overlaps between sets
-    local_sources = sorted(set(local_sources))
-    int_sources   = sorted(set(int_sources))
-    regional_src  = sorted(set(regional_src))
+    local_candidates = {
+        d['source_domain'] for d in dbm['sources'].find(
+            {'primary_location': {'$in': [country_code]}, 'include': True}
+        )
+    }
+    if country_code == 'KAZ':
+        local_candidates.add('kaztag.kz')
+
+    international_candidates = {
+        d['source_domain'] for d in dbm['sources'].find(
+            {'major_international': True, 'include': True}
+        )
+    }
+    regional_candidates = {
+        d['source_domain'] for d in dbm['sources'].find(
+            {'major_regional': True, 'include': True}
+        )
+    }
+
+    international_set = international_candidates - forced_local
+    regional_set = regional_candidates - international_set - forced_local
+    local_set = (local_candidates - international_set - regional_set) | forced_local
+
+    local_sources = sorted(local_set)
+    int_sources = sorted(international_set)
+    regional_src = sorted(regional_set)
+
+    if (local_set & international_set) or (local_set & regional_set) or (international_set & regional_set):
+        raise RuntimeError(f"[{country_code}] source role resolution produced overlapping sets")
+
+    print(
+        f"[{country_code}] Source precedence: international > regional > local "
+        f"(forced local: {sorted(forced_local) or 'none'})"
+    )
+
+    _reset_country_output_dirs(country_name)
 
     print(f"[{country_code}] Local: {len(local_sources)}, INT: {len(int_sources)}, REG: {len(regional_src)}")
 
@@ -522,20 +556,40 @@ def process_country(uri, country_name, country_code, num_cpus=10):
     int_args = [(uri, d, country_name, country_code) for d in int_sources]
     reg_args = [(uri, d, country_name, country_code) for d in regional_src]
 
-    loc_results = p_umap(lambda a: count_domain_loc_merged(*a), loc_args, num_cpus=num_cpus) if loc_args else []
-    int_results = p_umap(lambda a: count_domain_int_merged(*a), int_args, num_cpus=num_cpus) if int_args else []
-    reg_results = p_umap(lambda a: count_domain_int_merged(*a), reg_args, num_cpus=num_cpus) if reg_args else []
+    # Carry the domain inside every worker result. p_map is ordered, but the
+    # explicit tag also prevents future parallel-map changes from relabeling
+    # results by position.
+    loc_results = p_map(
+        lambda a: (a[1], count_domain_loc_merged(*a)), loc_args, num_cpus=num_cpus
+    ) if loc_args else []
+    int_results = p_map(
+        lambda a: (a[1], count_domain_int_merged(*a)), int_args, num_cpus=num_cpus
+    ) if int_args else []
+    reg_results = p_map(
+        lambda a: (a[1], count_domain_int_merged(*a)), reg_args, num_cpus=num_cpus
+    ) if reg_args else []
+
+    if not (
+        len(loc_results) == len(local_sources)
+        and len(int_results) == len(int_sources)
+        and len(reg_results) == len(regional_src)
+    ):
+        raise RuntimeError(f"[{country_code}] parallel result count does not match source count")
 
     # Split tuples into dicts domain -> frames
     domain_to_comb, domain_to_rel, domain_to_nonrel = {}, {}, {}
-    for d, (dfc, dfr, dfn) in zip(local_sources, loc_results): domain_to_comb[d], domain_to_rel[d], domain_to_nonrel[d] = dfc, dfr, dfn
-    for d, (dfc, dfr, dfn) in zip(int_sources, int_results):  domain_to_comb[d], domain_to_rel[d], domain_to_nonrel[d] = dfc, dfr, dfn
-    for d, (dfc, dfr, dfn) in zip(regional_src, reg_results): domain_to_comb[d], domain_to_rel[d], domain_to_nonrel[d] = dfc, dfr, dfn
+    for d, (dfc, dfr, dfn) in loc_results: domain_to_comb[d], domain_to_rel[d], domain_to_nonrel[d] = dfc, dfr, dfn
+    for d, (dfc, dfr, dfn) in int_results: domain_to_comb[d], domain_to_rel[d], domain_to_nonrel[d] = dfc, dfr, dfn
+    for d, (dfc, dfr, dfn) in reg_results: domain_to_comb[d], domain_to_rel[d], domain_to_nonrel[d] = dfc, dfr, dfn
+
+    expected_domains = local_set | international_set | regional_set
+    if set(domain_to_comb) != expected_domains:
+        raise RuntimeError(f"[{country_code}] source results do not match assigned domains")
 
     # Denominators per domain (ALL local articles; no civic filters)
-    denom_loc = p_umap(lambda a: denom_domain_loc(*a), loc_args, num_cpus=num_cpus) if loc_args else []
-    denom_int = p_umap(lambda a: denom_domain_int(*a), int_args, num_cpus=num_cpus) if int_args else []
-    denom_reg = p_umap(lambda a: denom_domain_int(*a), reg_args, num_cpus=num_cpus) if reg_args else []
+    denom_loc = p_map(lambda a: denom_domain_loc(*a), loc_args, num_cpus=num_cpus) if loc_args else []
+    denom_int = p_map(lambda a: denom_domain_int(*a), int_args, num_cpus=num_cpus) if int_args else []
+    denom_reg = p_map(lambda a: denom_domain_int(*a), reg_args, num_cpus=num_cpus) if reg_args else []
 
     # Country-level raw (sum across sources) for each slice
     country_comb_raw   = _sum_frames(list(domain_to_comb.values()))
@@ -556,6 +610,16 @@ def process_country(uri, country_name, country_code, num_cpus=10):
     # Write country-level (raw + _norm)
     out_final_base = f"/home/ml4p/Dropbox/Dropbox/ML for Peace/Counts_Civic_New/Final_Aggregated/{country_name}/{today.year}_{today.month}_{today.day}/"
     Path(out_final_base).mkdir(parents=True, exist_ok=True)
+    source_roles = (
+        [{'source_domain': d, 'assigned_role': 'local', 'forced_override': d in forced_local, 'location_rule': 'lenient'} for d in local_sources]
+        + [{'source_domain': d, 'assigned_role': 'international', 'forced_override': False, 'location_rule': 'strict'} for d in int_sources]
+        + [{'source_domain': d, 'assigned_role': 'regional', 'forced_override': False, 'location_rule': 'strict'} for d in regional_src]
+    )
+    source_roles_dir = f"/home/ml4p/Dropbox/Dropbox/ML for Peace/Counts_Civic_New/Source_Roles/{country_name}/{today.year}_{today.month}_{today.day}/"
+    Path(source_roles_dir).mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(source_roles, columns=['source_domain', 'assigned_role', 'forced_override', 'location_rule']).sort_values('source_domain').to_csv(
+        os.path.join(source_roles_dir, f"{country_name}_Source_Roles.csv"), index=False
+    )
     country_comb_raw.sort_index().to_csv(os.path.join(out_final_base, f"{country_name}_Combined.csv"))
     country_rel_raw.sort_index().to_csv(os.path.join(out_final_base, f"{country_name}_Civic_Related.csv"))
     country_nonrel_raw.sort_index().to_csv(os.path.join(out_final_base, f"{country_name}_Non_Civic_Related.csv"))
@@ -630,7 +694,7 @@ if __name__ == '__main__':
         # 'KHM', 'BLR', 'LKA', 'RWA', 'ZAF', 'KAZ', 'BLR'
         # "PHL", "AZE", "JAM", "UKR", "IND", "HUN", "CRI", "UZB", "MRT", "ETH", "MYS", "NAM"
         #  "MAR", "KAZ", "NPL", "PAK", "MYS", "MEX", "ZMB", "SRB", "ARM", "NER", "MDA"
-        "DZA"
+        "KEN", "SRB", "IND"
         ]
     countries = [(n,c) for (n,c) in all_countries if c in countries_needed]
 
