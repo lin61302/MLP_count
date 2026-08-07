@@ -710,7 +710,7 @@ if __name__ == "__main__":
         ('Algeria', 'DZA'), ('Macedonia', 'MKD'), ('South Sudan', 'SSD'), ('Liberia', 'LBR'),
         ('Pakistan', 'PAK'), ('Nepal', 'NPL'), ('Namibia', 'NAM'), ('Burkina Faso', 'BFA'),
         ('Dominican Republic', 'DOM'), ('Timor Leste', 'TLS'), ('Solomon Islands', 'SLB'),
-        ('Costa Rica', 'CRI'), ('Panama', 'PAN'), ('Mexico', 'MEX')
+        ('Costa Rica', 'CRI'), ('Panama', 'PAN'), ('Mexico', 'MEX'), ('Brazil', 'BRA'), ('Egypt', 'EGY'), ('Bolivia', 'BOL')
     ]
 
     countries_needed = [
@@ -730,7 +730,8 @@ if __name__ == "__main__":
     # "MAR", "KAZ", "NPL", "PAK", "MYS", "MEX", "ZMB", "SRB", "ARM", "NER", "MDA"
     # "DZA"
     #  "PAN", "SLV", "KEN", "SRB", "IND"
-    "IDN",  "BLR", "PRY", "DOM", "ECU", "NIC", "TUN", "SEN", "KGZ", "LKA", "KHM", "ALB", "TLS", "MKD", "MWI", "LBR", "PAN", "SLV"
+    # "IDN",  "BLR", "PRY", "DOM", "ECU", "NIC", "TUN", "SEN", "KGZ", "LKA", "KHM", "ALB", "TLS", "MKD", "MWI", "LBR", "PAN", "SLV"
+    "BRA", "BOL", "EGY"
     ]
 
     # Empty countries_needed => run all countries.
