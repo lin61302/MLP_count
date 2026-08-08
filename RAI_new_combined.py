@@ -731,7 +731,8 @@ if __name__ == "__main__":
     # "DZA"
     #  "PAN", "SLV", "KEN", "SRB", "IND"
     # "IDN",  "BLR", "PRY", "DOM", "ECU", "NIC", "TUN", "SEN", "KGZ", "LKA", "KHM", "ALB", "TLS", "MKD", "MWI", "LBR", "PAN", "SLV"
-    "BRA", "BOL", "EGY"
+    # "BRA", "BOL", "EGY"
+    "SLB", "TZA", "HND", "GHA"
     ]
 
     # Empty countries_needed => run all countries.
