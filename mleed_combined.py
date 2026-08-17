@@ -498,7 +498,8 @@ if __name__ == "__main__":
         ('Algeria', 'DZA'), ('Macedonia', 'MKD'), ('South Sudan', 'SSD'), ('Liberia', 'LBR'),
         ('Pakistan', 'PAK'), ('Nepal', 'NPL'), ('Namibia', 'NAM'), ('Burkina Faso', 'BFA'),
         ('Dominican Republic', 'DOM'), ('Timor Leste', 'TLS'), ('Solomon Islands', 'SLB'),
-        ('Costa Rica', 'CRI'), ('Panama', 'PAN'), ('Mexico', 'MEX'), ('Brazil', 'BRA'), ('Egypt', 'EGY'), ('Bolivia', 'BOL')
+        ('Costa Rica', 'CRI'), ('Panama', 'PAN'), ('Mexico', 'MEX'), ('Brazil', 'BRA'), ('Egypt', 'EGY'), ('Bolivia', 'BOL'),
+        ("Libya", "LBY")
     ]
 
     # Specify base codes to process (no ENV_ codes needed)
@@ -549,7 +550,8 @@ if __name__ == "__main__":
 # "IND"
 # "IDN",  "BLR", "PRY", "DOM", "ECU", "NIC", "TUN", "SEN", "KGZ", "LKA", "KHM", "ALB", "TLS", "MKD", "MWI", "LBR", "PAN", "SLV"
 # "BRA", "BOL", "EGY"
-"SLB", "TZA", "HND", "GHA", "TLS", "LBR"
+# "SLB", "TZA", "HND", "GHA", "TLS", "LBR"
+"LBY"
 
     ]  # <-- edit this list as needed
     countries = [(name, code) for (name, code) in all_countries if code in countries_needed]
