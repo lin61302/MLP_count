@@ -942,7 +942,8 @@ if __name__ == "__main__":
     # "BRA", "BOL", "EGY"
     # "SLB", "TZA", "HND", "GHA"
 
-    "MOZ", "RWA", "PER", "UGA", "MLI", "KEN", "COD", "SSD", "AGO"
+    # "MOZ", "RWA", "PER", "UGA", "MLI", "KEN", "COD", "SSD", "AGO"
+    "ZAF", "GTM", "GEO", "BEN",
     ]
 
     all_countries = [
