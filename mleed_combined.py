@@ -513,32 +513,6 @@ if __name__ == "__main__":
         #  'LBR','ZWE','ARM','ZMB','BLR','SLV'
     #    "MEX", "SEN", "TUN", "SLB", "TLS","TZA"
 #     'NIC',
-#  'SLV',
-#  'BLR',
-#  'DOM',
-#  'MKD',
-#  'TUN',
-#  'ARM',
-#  'HND',
-#  'GHA',
-#  'RWA',
-#  'TUR',
-#  'COD',
-#  'LBR',
-#  'CMR',
-#  'ALB',
-#  'PRY',
-#  'ETH',
-#  'ZAF',
-#  'ECU',
-#  'MYS',
-#  'PAK',
-#  'ZWE',
-#  'ZMB',
-#  'MEX',
-#  'UGA',
-#  'BFA',
-#  'BEN',
 #  "MLI","AGO",'GTM','NGA','MOZ','SSD','UKR','GEO','UZB','XKX','PHL','MWI','NER'
 #  'KHM', 'BLR', 'LKA', 'RWA', 'ZAF', 'KAZ', 'NGA'
 # "PHL", "AZE", "JAM", "UKR", "IND", "HUN", "CRI", "UZB", "MRT", "ETH", "MYS", "NAM"
@@ -552,7 +526,8 @@ if __name__ == "__main__":
 # "BRA", "BOL", "EGY"
 # "SLB", "TZA", "HND", "GHA", "TLS", "LBR"
 # "MOZ", "RWA", "PER", "UGA", "MLI", "KEN", "COD", "SSD", "AGO", "LBY", "ALB", "TZA", "SLV", "PAN"
-"ZAF", "GTM", "GEO", "BEN", "SSD", "HND", "GHA"
+# "ZAF", "GTM", "GEO", "BEN", "SSD", "HND", "GHA"
+"XKX", "NGA", "CMR", "COL",  "GEO", "AGO", "COD", "SLB"
 
     ]  # <-- edit this list as needed
     countries = [(name, code) for (name, code) in all_countries if code in countries_needed]
