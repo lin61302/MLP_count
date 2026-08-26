@@ -82,12 +82,26 @@ RAI_KEYWORD_HASH = hashlib.sha1(
     '\n'.join([str(x).strip() for x in list(ch) + list(ru)]).encode('utf-8', 'ignore')
 ).hexdigest()
 
+def _as_text(value):
+    """Normalize legacy scalar/list translation fields to searchable text."""
+    if value is None:
+        return ''
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (list, tuple)):
+        parts = (_as_text(item).strip() for item in value)
+        return ' '.join(part for part in parts if part)
+    if isinstance(value, dict):
+        parts = (_as_text(item).strip() for item in value.values())
+        return ' '.join(part for part in parts if part)
+    return str(value)
+
 def _flag_signature(title, main_snip):
     payload = '\n---RAI-FLAG---\n'.join([
         RAI_FLAG_VERSION,
         RAI_KEYWORD_HASH,
-        title or '',
-        main_snip or '',
+        _as_text(title),
+        _as_text(main_snip),
     ])
     return hashlib.sha1(payload.encode('utf-8', 'ignore')).hexdigest()
 
@@ -101,10 +115,11 @@ g_loc_filter = compile_regex(g_loc, [True]*len(g_loc))
 
 def check_georgia_text(text, mode):
     try:
+        text = _as_text(text)
         if mode == 'loc':
-            return not g_loc_filter.search(text or "")
+            return not g_loc_filter.search(text)
         else:
-            return not g_int_filter.search(text or "")
+            return not g_int_filter.search(text)
     except Exception:
         return True
 
@@ -154,6 +169,8 @@ def _safe_colname(doc):
 
 def _doc_passes(pattern_re, title_re, title, main2k):
     try:
+        title = _as_text(title)
+        main2k = _as_text(main2k)
         return bool(pattern_re.search(main2k)) or bool(pattern_re.search(title)) or bool(title_re.search(title))
     except Exception:
         return False
@@ -312,8 +329,8 @@ def count_domain_loc(uri, domain, country_name, country_code):
         e_ch, e_ru, e_cb = [], [], []
 
         for i, d in enumerate(docs):
-            title = d.get('title_translated', '') or ''
-            main_snip = (d.get('maintext_translated', '') or '')[:2000]
+            title = _as_text(d.get('title_translated'))
+            main_snip = _as_text(d.get('maintext_translated'))[:2000]
 
             # read or compute flags once, persist if missing
             is_ch, is_ru = _get_or_update_flags(dbl, d, title, main_snip)
@@ -408,8 +425,8 @@ def count_domain_int(uri, domain, country_name, country_code):
         e_ch, e_ru, e_cb = [], [], []
 
         for i, d in enumerate(docs):
-            title = d.get('title_translated', '') or ''
-            main_snip = (d.get('maintext_translated', '') or '')[:2000]
+            title = _as_text(d.get('title_translated'))
+            main_snip = _as_text(d.get('maintext_translated'))[:2000]
 
             is_ch, is_ru = _get_or_update_flags(dbl, d, title, main_snip)
             is_cb = is_ch or is_ru
