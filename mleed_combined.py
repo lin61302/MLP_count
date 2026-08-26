@@ -48,13 +48,28 @@ g_loc_string = '|'.join(g_loc) if g_loc else r'^\b$'
 g_int_filter = re.compile(g_int_string, flags=re.IGNORECASE)
 g_loc_filter = re.compile(g_loc_string, flags=re.IGNORECASE)
 
+def _as_text(value):
+    """Normalize legacy scalar/list translation fields to searchable text."""
+    if value is None:
+        return ''
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (list, tuple)):
+        parts = (_as_text(item).strip() for item in value)
+        return ' '.join(part for part in parts if part)
+    if isinstance(value, dict):
+        parts = (_as_text(item).strip() for item in value.values())
+        return ' '.join(part for part in parts if part)
+    return str(value)
+
 def check_georgia(doc_text: str, domain_type: str) -> bool:
     """False if doc contains forbidden 'CompanyName' patterns."""
     try:
+        doc_text = _as_text(doc_text)
         if domain_type == 'loc':
-            return not g_loc_filter.search(doc_text or "")
+            return not g_loc_filter.search(doc_text)
         else:  # 'int'
-            return not g_int_filter.search(doc_text or "")
+            return not g_int_filter.search(doc_text)
     except Exception:
         return True
 
@@ -464,6 +479,12 @@ def process_country(uri, country_name, country_code, num_cpus=10):
 def run_git_commands(commit_message):
     try:
         subprocess.run("git add *.py", shell=True, check=True)
+        staged = subprocess.run(["git", "diff", "--cached", "--quiet"])
+        if staged.returncode == 0:
+            print("No Python changes to commit; continuing.")
+            return
+        if staged.returncode != 1:
+            staged.check_returncode()
         subprocess.run(["git", "commit", "-m", commit_message], check=True)
         subprocess.run(["git", "push"], check=True)
         print("Git commands executed successfully!")

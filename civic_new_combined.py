@@ -78,62 +78,78 @@ g_loc_string = '|'.join(g_loc) if g_loc else r'^\b$'
 g_int_filter = re.compile(g_int_string, flags=re.IGNORECASE)
 g_loc_filter = re.compile(g_loc_string, flags=re.IGNORECASE)
 
+def _as_text(value):
+    """Normalize legacy scalar/list translation fields to searchable text."""
+    if value is None:
+        return ''
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (list, tuple)):
+        parts = (_as_text(item).strip() for item in value)
+        return ' '.join(part for part in parts if part)
+    if isinstance(value, dict):
+        parts = (_as_text(item).strip() for item in value.values())
+        return ' '.join(part for part in parts if part)
+    return str(value)
+
 def check_georgia_text(text, mode):
     try:
+        text = _as_text(text)
         if mode == 'loc':
-            return not g_loc_filter.search(text or "")
+            return not g_loc_filter.search(text)
         else:
-            return not g_int_filter.search(text or "")
+            return not g_int_filter.search(text)
     except Exception:
         return True
 
 # === Civic helper checks ===
 def check_censorship(doc):
     try:
-        return bool(censor_re.search(doc.get('title_translated',''))) or bool(censor_re.search(doc.get('maintext_translated','')))
+        return bool(censor_re.search(_as_text(doc.get('title_translated')))) or bool(censor_re.search(_as_text(doc.get('maintext_translated'))))
     except:
         return False
 
 def check_defamation(doc):
     try:
-        t, m = doc.get('title_translated',''), doc.get('maintext_translated','')
+        t = _as_text(doc.get('title_translated'))
+        m = _as_text(doc.get('maintext_translated'))
         return (bool(defame_re2.search(t)) or bool(defame_re2.search(m))) and (bool(defame_re1.search(t)) or bool(defame_re1.search(m)))
     except:
         return False
 
 def check_double(doc):
     try:
-        return bool(double_re.search(doc.get('title_translated',''))) or bool(double_re.search(doc.get('maintext_translated','')))
+        return bool(double_re.search(_as_text(doc.get('title_translated')))) or bool(double_re.search(_as_text(doc.get('maintext_translated'))))
     except:
         return False
 
 def check_corruption_LA(doc):
     try:
-        return bool(corrupt_LA_re.search(doc.get('title_translated',''))) or bool(corrupt_LA_re.search(doc.get('maintext_translated','')))
+        return bool(corrupt_LA_re.search(_as_text(doc.get('title_translated')))) or bool(corrupt_LA_re.search(_as_text(doc.get('maintext_translated'))))
     except:
         return False
 
 def check_corruption_AR(doc):
     try:
-        return bool(corrupt_AR_re.search(doc.get('title_translated',''))) or bool(corrupt_AR_re.search(doc.get('maintext_translated','')))
+        return bool(corrupt_AR_re.search(_as_text(doc.get('title_translated')))) or bool(corrupt_AR_re.search(_as_text(doc.get('maintext_translated'))))
     except:
         return False
 
 def check_corruption_PU(doc):
     try:
-        return bool(corrupt_PU_re.search(doc.get('title_translated',''))) or bool(corrupt_PU_re.search(doc.get('maintext_translated','')))
+        return bool(corrupt_PU_re.search(_as_text(doc.get('title_translated')))) or bool(corrupt_PU_re.search(_as_text(doc.get('maintext_translated'))))
     except:
         return False
 
 def check_coup(doc):
     try:
-        return bool(coup_re.search(doc.get('title_translated',''))) or bool(coup_re.search(doc.get('maintext_translated','')))
+        return bool(coup_re.search(_as_text(doc.get('title_translated')))) or bool(coup_re.search(_as_text(doc.get('maintext_translated'))))
     except:
         return False
 
 def check_ukr(doc):
     try:
-        return bool(ukr_re.search(doc.get('title_translated',''))) or bool(ukr_re.search(doc.get('maintext_translated','')))
+        return bool(ukr_re.search(_as_text(doc.get('title_translated')))) or bool(ukr_re.search(_as_text(doc.get('maintext_translated'))))
     except:
         return False
 
@@ -229,12 +245,7 @@ def update_info(docs, event_types, event_types2, colname):
     db_local = MongoClient(uri).ml4p
     for nn, _doc in enumerate(docs):
         try:
-            try:
-                colname_new = f"articles-{_doc['date_publish'].year}-{_doc['date_publish'].month}"
-            except:
-                dd = dateparser.parse(_doc['date_publish']).replace(tzinfo=None)
-                colname_new = f"articles-{dd.year}-{dd.month}"
-            db_local[colname_new].update_one(
+            db_local[colname].update_one(
                 {'_id': _doc['_id']},
                 {'$set': {
                     'event_type_civic_new': event_types[nn],
@@ -244,17 +255,11 @@ def update_info(docs, event_types, event_types2, colname):
         except:
             pass
 
-def add_ukr(docs_ukr):
+def add_ukr(docs_ukr, colname):
     db_local = MongoClient(uri).ml4p
     for _doc in docs_ukr:
         try:
-            try:
-                colname_new = f"articles-{_doc['date_publish'].year}-{_doc['date_publish'].month}"
-            except:
-                dd = dateparser.parse(_doc['date_publish']).replace(tzinfo=None)
-                colname_new = f"articles-{dd.year}-{dd.month}"
-
-            existing_doc = db_local[colname_new].find_one({'_id': _doc['_id']})
+            existing_doc = db_local[colname].find_one({'_id': _doc['_id']})
             if existing_doc:
                 cliff_locations = existing_doc.get('cliff_locations', {})
                 if 'UKR' in cliff_locations:
@@ -262,12 +267,12 @@ def add_ukr(docs_ukr):
                         cliff_locations['UKR'].insert(0, 'Ukraine')
                 else:
                     cliff_locations['UKR'] = ['Ukraine']
-                db_local[colname_new].update_one(
+                db_local[colname].update_one(
                     {'_id': _doc['_id']},
                     {'$set': {'cliff_locations': cliff_locations}}
                 )
             else:
-                db_local[colname_new].update_one(
+                db_local[colname].update_one(
                     {'_id': _doc['_id']},
                     {'$set': {'cliff_locations.UKR': ['Ukraine']}}
                 )
@@ -316,7 +321,7 @@ def count_domain_loc_merged(uri, domain, country_name, country_code):
 
         docs_ukr = [d for d in docs if check_ukr(d)]
         try:
-            multiprocessing.Process(target=add_ukr, args=(docs_ukr,)).start()
+            multiprocessing.Process(target=add_ukr, args=(docs_ukr, colname)).start()
         except Exception as err:
             print("Failed to spawn add_ukr:", err)
 
@@ -347,14 +352,9 @@ def count_domain_loc_merged(uri, domain, country_name, country_code):
         if country_code == 'GEO':
             for _doc in docs:
                 try:
-                    try:
-                        colname_g = f"articles-{_doc['date_publish'].year}-{_doc['date_publish'].month}"
-                    except Exception:
-                        dd = dateparser.parse(_doc['date_publish']).replace(tzinfo=None)
-                        colname_g = f"articles-{dd.year}-{dd.month}"
                     is_yes = check_georgia_text(_doc.get('maintext_translated',''), 'loc') and \
                              check_georgia_text(_doc.get('title_translated',''), 'loc')
-                    dbm[colname_g].update_one({'_id': _doc['_id']}, {'$set': {'Country_Georgia': 'Yes' if is_yes else 'No'}})
+                    dbm[colname].update_one({'_id': _doc['_id']}, {'$set': {'Country_Georgia': 'Yes' if is_yes else 'No'}})
                 except:
                     pass
 
@@ -645,6 +645,12 @@ def process_country(uri, country_name, country_code, num_cpus=10):
 def run_git_commands(commit_message):
     try:
         subprocess.run("git add *.py", shell=True, check=True)
+        staged = subprocess.run(["git", "diff", "--cached", "--quiet"])
+        if staged.returncode == 0:
+            print("No Python changes to commit; continuing.")
+            return
+        if staged.returncode != 1:
+            staged.check_returncode()
         subprocess.run(["git", "commit", "-m", commit_message], check=True)
         subprocess.run(["git", "push"], check=True)
         print("Git commands executed successfully!")

@@ -422,12 +422,27 @@ g_loc_string = '|'.join(g_loc)
 g_int_filter = re.compile(g_int_string, flags=re.IGNORECASE)
 g_loc_filter = re.compile(g_loc_string, flags=re.IGNORECASE)
 
+def _as_text(value):
+    """Normalize legacy scalar/list translation fields to searchable text."""
+    if value is None:
+        return ''
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (list, tuple)):
+        parts = (_as_text(item).strip() for item in value)
+        return ' '.join(part for part in parts if part)
+    if isinstance(value, dict):
+        parts = (_as_text(item).strip() for item in value.values())
+        return ' '.join(part for part in parts if part)
+    return str(value)
+
 def check_georgia(doc_text, domain_type):
     """
     Returns False if the doc contains any forbidden 'CompanyName' pattern,
     meaning it's not truly relevant to Georgia. Original logic retained.
     """
     try:
+        doc_text = _as_text(doc_text)
         if domain_type == 'loc':
             return not g_loc_filter.search(doc_text)
         else:  # 'int'
@@ -459,8 +474,13 @@ def _safe_month_from(doc_dt):
     try:
         return pd.Timestamp(doc_dt.year, doc_dt.month, 1)
     except Exception:
-        dd = dateparser.parse(str(doc_dt)).replace(tzinfo=None)
-        return pd.Timestamp(dd.year, dd.month, 1)
+        try:
+            dd = dateparser.parse(str(doc_dt))
+            if dd is None:
+                return None
+            return pd.Timestamp(dd.year, dd.month, 1)
+        except Exception:
+            return None
 
 def _event_sent_key(event_label, sent_label):
     if (event_label in EVENT_LABELS) and (sent_label in SENT_LABELS):
@@ -528,6 +548,7 @@ def count_domain_loc_funding(uri, domain, country_name, country_code):
     db = MongoClient(uri).ml4p
     df = _init_monthly_df()
     loc_code = country_code[-3:]
+    skipped_bad_dates = 0
 
     projection = {
         '_id': 1, 'date_publish': 1, 'language': 1,
@@ -593,6 +614,9 @@ def count_domain_loc_funding(uri, domain, country_name, country_code):
 
         for d in docs:
             doc_month = _safe_month_from(d.get('date_publish'))
+            if doc_month is None or doc_month not in df.index:
+                skipped_bad_dates += 1
+                continue
             ev  = (d.get('US_funding_event') or {}).get('result')
             sen = (d.get('US_funding_sentiment') or {}).get('result')
             key = _event_sent_key(ev, sen)
@@ -602,8 +626,10 @@ def count_domain_loc_funding(uri, domain, country_name, country_code):
 
             # Optional: mark DB for GEO like original behavior
             if country_code in ('GEO', 'ENV_GEO'):
-                colname_g = f"articles-{doc_month.year}-{doc_month.month}"
-                db[colname_g].update_one({'_id': d['_id']}, {'$set': {'Country_Georgia': 'Yes'}})
+                db[colname].update_one({'_id': d['_id']}, {'$set': {'Country_Georgia': 'Yes'}})
+
+    if skipped_bad_dates:
+        print(f"[{country_code}] {domain}: skipped {skipped_bad_dates} funding rows with invalid/out-of-range dates")
 
     # Write RAW by source (new folder structure)
     out_path = os.path.join(OUT_ROOT, "Raw_By_Source", country_name, DATE_STAMP)
@@ -622,6 +648,7 @@ def count_domain_int_funding(uri, domain, country_name, country_code):
     db = MongoClient(uri).ml4p
     df = _init_monthly_df()
     loc_code = country_code[-3:]
+    skipped_bad_dates = 0
 
     projection = {
         '_id': 1, 'date_publish': 1, 'language': 1,
@@ -681,6 +708,9 @@ def count_domain_int_funding(uri, domain, country_name, country_code):
 
         for d in docs:
             doc_month = _safe_month_from(d.get('date_publish'))
+            if doc_month is None or doc_month not in df.index:
+                skipped_bad_dates += 1
+                continue
             ev  = (d.get('US_funding_event') or {}).get('result')
             sen = (d.get('US_funding_sentiment') or {}).get('result')
             key = _event_sent_key(ev, sen)
@@ -689,8 +719,10 @@ def count_domain_int_funding(uri, domain, country_name, country_code):
                 df.loc[doc_month, 'total_articles'] += 1
 
             if country_code in ('GEO', 'ENV_GEO'):
-                colname_g = f"articles-{doc_month.year}-{doc_month.month}"
-                db[colname_g].update_one({'_id': d['_id']}, {'$set': {'Country_Georgia': 'Yes'}})
+                db[colname].update_one({'_id': d['_id']}, {'$set': {'Country_Georgia': 'Yes'}})
+
+    if skipped_bad_dates:
+        print(f"[{country_code}] {domain}: skipped {skipped_bad_dates} funding rows with invalid/out-of-range dates")
 
     # Write RAW by source (new folder structure)
     out_path = os.path.join(OUT_ROOT, "Raw_By_Source", country_name, DATE_STAMP)
@@ -909,6 +941,12 @@ def process_country(uri, country_name, country_code, num_cpus=10, include_intl_r
 def run_git_commands(commit_message):
     try:
         subprocess.run("git add *.py", shell=True, check=True)
+        staged = subprocess.run(["git", "diff", "--cached", "--quiet"])
+        if staged.returncode == 0:
+            print("No Python changes to commit; continuing.")
+            return
+        if staged.returncode != 1:
+            staged.check_returncode()
         subprocess.run(["git", "commit", "-m", commit_message], check=True)
         subprocess.run(["git", "push"], check=True)
         print("Git commands executed successfully!")
