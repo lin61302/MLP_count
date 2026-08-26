@@ -930,20 +930,8 @@ if __name__ == "__main__":
         #     'IND', 'MOZ', 'AZE', 'KGZ', 'MDA', 'KAZ', 'PER', 'DZA', 'MKD', 'SSD', 'LBR', 'PAK', 'NPL', 'NAM', 'BFA',
         #     'DOM', 'TLS', 'SLB', 'CRI', 'PAN','MEX'
     #    "KGZ", "PAN", "PER", "MKD", "KEN"
-    # "ZAF", "COD", "UGA", "GHA"
-    # "MLI","AGO",'GTM','NGA','MOZ','SSD'
-    # 'KHM', 'BLR', 'LKA', 'RWA', 'ZAF', 'KAZ', 'BLR'
-    # "MWI","XKX","BFA","GEO","BEN","TUR","COL","CMR","BGD"
-    # "PHL", "AZE", "JAM", "UKR", "IND", "HUN", "CRI", "UZB", "MRT", "ETH", "MYS", "NAM"
-    # "MAR", "KAZ", "NPL", "PAK", "MYS", "MEX", "ZMB", "SRB", "ARM", "NER", "MDA"
-    # "DZA"
-    # "PAN", "SLV", "KEN", "SRB", "IND"
-    # "IDN",  "BLR", "PRY", "DOM", "ECU", "NIC", "TUN", "SEN", "KGZ", "LKA", "KHM", "ALB", "TLS", "MKD", "MWI", "LBR", "PAN", "SLV"
-    # "BRA", "BOL", "EGY"
-    # "SLB", "TZA", "HND", "GHA"
 
-    # "MOZ", "RWA", "PER", "UGA", "MLI", "KEN", "COD", "SSD", "AGO"
-    "ZAF", "GTM", "GEO", "BEN",
+    'ALB', 'BEN', 'COL', 'ECU', 'ETH', 'GEO', 'KEN', 'PRY', 'MLI', 'MAR', 'NGA', 'SRB', 'SEN', 'TZA', 'UGA', 'UKR', 'ZWE', 'MRT', 'ZMB', 'XKX', 'NER', 'JAM', 'HND', 'PHL', 'GHA', 'RWA', 'GTM', 'BLR', 'KHM', 'COD', 'TUR', 'BGD', 'SLV', 'ZAF', 'TUN', 'IDN', 'NIC', 'AGO', 'ARM', 'LKA', 'MYS', 'CMR', 'HUN', 'MWI', 'UZB', 'IND', 'MOZ', 'AZE', 'KGZ', 'MDA', 'KAZ', 'PER', 'DZA', 'MKD', 'SSD', 'LBR', 'PAK', 'NPL', 'NAM', 'BFA', 'DOM', 'TLS', 'SLB', 'CRI', 'PAN', 'MEX', 'BRA', 'EGY', 'BOL', 'LBY'
     ]
 
     all_countries = [
