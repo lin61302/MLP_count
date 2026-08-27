@@ -402,6 +402,7 @@ EVENT_LABELS = ['foreign_policy', 'foreign_aid', 'military_and_dod', '-999']
 SENT_LABELS  = ['positive', 'neutral', 'negative']
 COMBO_COLS = [f"{e}_{s}" for e in EVENT_LABELS for s in SENT_LABELS]
 ALL_COLS = COMBO_COLS + ['total_articles']  # keep as in your script
+DB_LOCAL_TOTAL_COLUMN = 'db_local_total_articles'
 
 # ------------------- Georgia text filters (UNCHANGED) -------------------
 __georgiapath_int__ = '/home/ml4p/peace-machine/peacemachine/Georgia_filter_international.xlsx'
@@ -893,12 +894,28 @@ def process_country(uri, country_name, country_code, num_cpus=10, include_intl_r
     denom_int = p_map(lambda a: denom_domain_int_all(*a), int_args, num_cpus=num_cpus) if int_args else []
     denom_reg = p_map(lambda a: denom_domain_int_all(*a), reg_args, num_cpus=num_cpus) if reg_args else []
 
+    # Keep the full local-source corpus separate from the normalization
+    # denominator, which may include INT/REG sources in a future run.
+    country_local_total_df = _sum_denoms(denom_loc)
+    local_total_series = country_local_total_df['denom_total_local'].astype('int64')
+
     country_denom_df = _sum_denoms(denom_loc + denom_int + denom_reg)
     denom_series = country_denom_df['denom_total_local'].astype('float64')
     denom_series = denom_series.mask(denom_series == 0, np.nan)
 
     # ---- Final aggregated (sum across sources) ----
     country_raw = _sum_frames(list(domain_to_df.values()))
+    country_raw[DB_LOCAL_TOTAL_COLUMN] = local_total_series.reindex(
+        country_raw.index, fill_value=0
+    )
+
+    if not include_intl_regional:
+        invalid_coverage = country_raw['total_articles'] > country_raw[DB_LOCAL_TOTAL_COLUMN]
+        if invalid_coverage.any():
+            bad_months = country_raw.index[invalid_coverage].strftime('%Y-%m').tolist()
+            raise RuntimeError(
+                f"[{country_code}] USG-relevant total exceeds all-local DB total: {bad_months}"
+            )
 
     # Add *_norm columns (divide by country-month denom)
     aligned = denom_series.reindex(country_raw.index)
